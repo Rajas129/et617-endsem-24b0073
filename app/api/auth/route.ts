@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { COOKIE, verifyCredentials, makeToken, readToken, cookieOptions, hasAccounts } from "@/lib/auth";
+import { COOKIE, verifyCredentials, makeToken, readToken, cookieOptions, hasAccounts, secretMisconfigured } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -24,9 +24,15 @@ export async function POST(req: Request) {
   const username = String(body.username ?? "").trim();
   const password = String(body.password ?? "");
 
+  if (secretMisconfigured()) {
+    return NextResponse.json(
+      { error: "The server is missing AUTH_SECRET. Set it in the Vercel environment variables." },
+      { status: 503 },
+    );
+  }
   if (!hasAccounts()) {
     return NextResponse.json(
-      { error: "No accounts are set up yet. Add APP_USERS to .env.local." },
+      { error: "No accounts are set up yet. Add APP_USERS to the environment variables." },
       { status: 503 },
     );
   }

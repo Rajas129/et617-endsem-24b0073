@@ -35,8 +35,21 @@ export function hasAccounts(): boolean {
   return accounts().length > 0;
 }
 
+const DEV_SECRET = "et617-dev-secret-change-me";
+
+/**
+ * The development fallback below is published in a public repository, so anyone
+ * could use it to forge a session cookie. In production we therefore refuse to
+ * fall back to it: a missing AUTH_SECRET fails the sign-in with a clear message
+ * instead of silently accepting forged sessions.
+ */
+export function secretMisconfigured(): boolean {
+  return process.env.NODE_ENV === "production" && !process.env.AUTH_SECRET;
+}
+
 function secret(): string {
-  return process.env.AUTH_SECRET || "et617-dev-secret-change-me";
+  if (secretMisconfigured()) throw new Error("AUTH_SECRET is not set");
+  return process.env.AUTH_SECRET || DEV_SECRET;
 }
 
 function sign(username: string): string {
@@ -61,7 +74,7 @@ export function makeToken(username: string): string {
 }
 
 export function readToken(token: string | undefined): string | null {
-  if (!token) return null;
+  if (!token || secretMisconfigured()) return null;
   const dot = token.lastIndexOf(".");
   if (dot === -1) return null;
   const username = decodeURIComponent(token.slice(0, dot));

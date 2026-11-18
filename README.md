@@ -10,7 +10,8 @@ She then takes a species out. Three AI agents take distinct educational roles, g
 disagree about what will happen, and she settles the argument by editing the web and
 re-running the simulation. A separate "Ask Mira" chat is open the whole time for doubts.
 
-See [DESIGN.md](DESIGN.md) for the learning design and [PRD.md](PRD.md) for the full spec.
+See [DESIGN.md](DESIGN.md) for the learning design, [PRD.md](PRD.md) for the full spec,
+and [DEPLOY.md](DEPLOY.md) for Vercel setup.
 
 ## Run it
 
