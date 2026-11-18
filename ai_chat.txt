@@ -1,0 +1,226 @@
+﻿I have added a doc in the file and in that the topic i have chosen is
+Problem - P3 Multi agent
+T3- Food Chain effect of removing a species
+L5 and C1
+
+
+or P1 with T3 and same L6and C4
+
+
+Tell me which one of these two have more resources available for free online like api and open source tools that could be used in these
+
+Quick flag before the answer: “Food chains: effect of removing a species” is P3-T4, not P3-T3. In the P3 column, T3 is “Series vs parallel circuits (Cl. 10)”. Declare it as P3-T4 on your card or you risk a mismatch. Similarly, P1-T3 is “Simple machines in household objects” — assuming that’s the one you meant.
+Verdict: Option A (P3-T4 + L5 + C1) has far more free resources and much lower risk
+Option A needs only a text LLM. Every one of these has a usable free tier today:
+Need
+	Free option
+	LLM for 3 agents
+	Google Gemini API free tier, Groq (Llama 3.3 70B, very fast), OpenRouter :free models, Mistral free tier, Cerebras
+	Agent orchestration
+	Vercel AI SDK (ai package — built for Next.js on Vercel, streaming, multi-step), or plain Promise.all + 3 system prompts. No framework needed.
+	Food-web data
+	Hardcode a 10-node JSON (grass → grasshopper → frog → snake → hawk, + decomposers). No dataset or API needed.
+	Food-web visualisation
+	Cytoscape.js, vis-network, react-force-graph, or plain SVG — all MIT-licensed
+	Cascade simulation
+	~60 lines of graph traversal you write yourself
+	Two things make this card easier than average, not just resource-rich:
+* C1 (low bandwidth) is nearly free for you. Text-only app, no media at all, and the required “clear fallback when an AI call fails” is just a canned sample agent transcript. You satisfy the constraint by not doing work.
+* The deterministic simulation doubles as your D6 verification layer. You compute the real cascade in code, then check the AI’s claims against it before showing the learner. That’s a genuinely strong answer to D6 (“how is output checked”) and to the P3 design challenge — the Explainer and Challenger can disagree on interpretation, while the Evaluator arbitrates against ground truth. Few students will have a verifiable ground truth to check AI against.
+L5 (anxious repeat learner) costs you nothing technically — it’s prompt tone plus no-penalty retries.
+Why Option B is the riskier bet
+The free CV tooling exists — TensorFlow.js + COCO-SSD, MediaPipe, Transformers.js, Gemini’s free multimodal tier, Roboflow’s free tier — but none of it fits simple machines:
+* COCO-SSD’s 80 classes contain no lever, pulley, inclined plane, or wheel-and-axle. It’ll tell you “scissors” and “bottle”, and you’d have to hand-map classes to machine types — defensible, but thin.
+* CLIP zero-shot via Transformers.js with custom labels (“a pulley”, “a lever”) works, but it’s a multi-hundred-MB model download in the browser.
+* A VLM API (Gemini free tier) is the realistic path, and it’s the only clean one.
+Add camera permissions, HTTPS/mobile quirks, image sizing, and a live viva change request on top of a CV pipeline, and you have several more failure modes in a 2-hour window. The one upside: the P1 design challenge (“show what happens when the AI misidentifies”) is easy to demo, because misidentification will happen constantly. And C4 + resume is just localStorage.
+If you want Option A, the stack
+npx create-next-app@latest et617-endsem-<rollno> --ts --tailwind --app
+npm i ai @ai-sdk/google cytoscape
+Three agents as three system prompts hitting one route handler; GOOGLE_GENERATIVE_AI_API_KEY as a Vercel env var; a foodweb.json + simulate(removedSpecies) function as ground truth; hardcoded fallback transcript for when the API 429s.
+One thing I’d check yourself rather than take from me: current free-tier rate limits on whichever provider you pick — they shift, and a 429 mid-viva is the one failure that actually hurts. Set up the labelled fallback early.
+lets go with option A so lets create a PRD before in this first dont make a topic totally hardcoded because its supposed to be interactive so that student can learn so if he has some kind of different doubt that might change the later question of other agents and all else
+and properly define how the 3 models will collaborate and also if you think there is a better topic then T4 then suggest that we have to show a case where the ai agents disagree and how the learner experince it
+Good call. One thing on topic choice first, then the PRD.
+Stick with T4 (food chains). I checked the alternatives and T4 is the only P3 topic that gives you all four of: a deterministic ground-truth simulator, a learner-editable model (so nothing is hardcoded), genuine scientific disagreement, and a visual that fits in 20 KB. The runner-up is T6 (lucky streaks) — equally good disagreement, but no editable domain object, so the learner can’t reshape the world and change what agents say later. That’s exactly what you asked for, so T4 wins.
+The key insight for your disagreement moment: in a food web, honest disagreement comes from modelling assumptions, not from one agent being dumb. “Remove frogs → snakes crash” vs “snakes switch to rats and only dip” are both defensible — which one is true depends on whether a snake→rat edge exists in this web. So the learner resolves it by editing the web and re-running. That’s authentic science, and the resolution is an experiment the learner runs, not a verdict an agent hands down.
+Let me write the PRD.
+PRD for Food Web Council — P3 · T4 · L5 · C1
+md
+PRD.md23.3kB
+Written to PRD.md. Here’s what matters in it:
+How it stays un-hardcoded. There’s one shared state object; every agent turn is generated from it, never from a script. The learner can mutate it four ways — remove a species, add/delete a feeding arrow, add a species, or ask a free-text doubt. The arrow edit is the important one: it changes the ground truth, so a claim that was wrong becomes right without touching a single prompt. The governing rule is no agent prompt ever contains the correct answer as a string — agents get the web and the simulator output as JSON and must reason over them. A free-text doubt becomes a queued obligation the Co-learner has to raise later, so the learner’s question genuinely redirects subsequent turns.
+How the three collaborate. They don’t free-talk; they write typed JSON records to a blackboard in a fixed order. Simulator runs first (pure TypeScript, no AI) → Dr. Sen the Evidence Checker sees the sim and issues a per-claim verdict → Mira the Guide and Aarav the Co-learner are generated blind to the sim, which is what lets them be honestly wrong. Three invariants keep disagreement from becoming confusion:
+1. At most one open disagreement at a time.
+2. Agents may disagree about predictions, never about instructions — only Mira issues the next action.
+3. Every disagreement must be simulator-decidable, or it’s suppressed.
+Two L5-driven choices worth defending in the viva. Aarav is a peer who is wrong about a third of the time, not a third adult telling Priya she’s wrong — she spends the session watching someone like her be wrong without consequence. And Mira and Aarav being blind to the simulator isn’t a limitation, it’s the mechanism: real agents producing real disagreement, with the learner as tiebreaker.
+The disagreement moment, fully scripted in §4 with actual numbers: snakes go 40 → 26 → back to 33, so Aarav (“they crash”) is wrong and Mira (“they hold”) is incomplete. Dr. Sen points at the one arrow the whole argument rests on and tells the learner to delete it. They do; snakes crash to 4. Both agents were conditionally right — they were assuming different webs. The learner performs the resolution.
+C1 pays for itself. Zero media, inline SVG, client-side simulator means the core activity needs no network at all. Two LLM calls per turn instead of four, with per-agent token caps that also keep the reading level where Priya needs it. Live byte counter in the footer so the constraint is visibly satisfied.
+Two things to decide before you start: the final species set (6–8 nodes to stay readable at 360 px), and whether Aarav’s wrongness is prompt-controlled or deterministically scheduled — I’d go deterministic, because then you can trigger the disagreement on demand during the walkthrough. Also worth verifying Gemini’s current free-tier limits yourself rather than trusting my number; a 429 mid-viva is the one failure that actually costs you.
+The build order in §11 ships the simulator and deploys before any AI goes in, so a dead API leaves you with a working ecology lab rather than nothing.
+Before I build — a correction on the models, then I’ll get going.
+There’s no Gemma 26B or 31B. The real sizes are Gemma 2 (2B / 9B / 27B) and Gemma 3 (1B / 4B / 12B / 27B). I’m reading your “26B / 31B” as Gemma 2 27B and Gemma 3 27B, and I’m making both model IDs env-configurable so fixing a wrong guess is a one-line edit, not a rebuild.
+One thing that genuinely shapes the code: Gemma doesn’t support structured outputs or function calling the way Gemini does, and Gemma 2 has no system role. So generateObject + Zod won’t work — I’m writing a tolerant JSON extractor/repair layer and putting role instructions in the user turn instead.
+Node 22, npm, git, network all good. Writing package.json and starting the install in the background while I build the simulator.
+Now the ground truth — types, the food web, and the simulator.
+Install finished. Now the simulator — this is the ground truth, so I’m computing carrying capacities from the baseline web so the unperturbed system sits exactly at equilibrium (otherwise the web drifts on its own and the learner can’t attribute any change to their action).
+Now let me verify the simulator actually produces the pedagogy the PRD promises, before building anything on top of it.
+Extensionless imports need a compile step for bare Node. Compiling to the scratchpad instead.
+Control sits perfectly flat (the equilibrium math works) and the predator-removal scenario already produces the grasshopper crash after a rat boom — exactly the overshoot that defeats misconception 2. But two things need fixing: no deciding assumption is found (snake “fell” both with and without the rat arrow, so nothing flips), and grass collapses to 15 which is too violent. Retuning the dependencies.
+Dynamics are good now (grass 100→58 at 2 hops, grasshopper booms to 188), but the deciding assumption still doesn’t fire: 18.6 vs 7.7 both classify as “fell”. The real issue is biological — a predator with zero food should starve, not decline slowly from crowding. Adding a starvation rule.
+The deciding assumption now fires cleanly and unambiguously:
+
+
+	Snake outcome
+	With Rat → Snake arrow
+	ends at 18.6 — survives
+	Without it
+	ends at 0 — extinct
+	That’s a binary flip a Class 7 learner can read at a glance, and it’s the experiment that settles the agents’ argument. Verified cascade numbers: grasshopper 60→188, grass 100→58 (2 hops from the removal — the misconception-1 killer), hawk 20→15.5. Now the LLM layer.
+Now the agent layer — prompts, the deterministic conflict scheduler, and the verification guard that checks Dr. Sen’s claims against the simulator before the learner sees them.
+Now the config files, .env, and the CSS design system.
+Repo’s already there — roll number 24B0073. I’ll wire that in as the identity token. Now the UI; starting with the design system and layout.
+Rather than a 7-line spaghetti chart (illegible at 360px, and a 7-hue legend an anxious 13-year-old has to decode), I’m using small-multiple sparklines — one mini chart per species with a direct label. That removes the categorical-palette problem entirely; the only colors left encode direction, which ships with text labels too. Validating those:
+The validator flags green↔amber as the protanopia-hard pair. Worth fixing properly — and there’s a pedagogical reason to change it anyway: green-for-“rose” would imply a grasshopper boom is good news, which is exactly the misconception I’m trying to defeat. Switching to a non-moralizing blue/amber pair:
+#2E74C0 / #C06A14 / #6E7673 passes every check (the chroma “fail” is the deliberate neutral for no change — it’s supposed to read gray). Checking the dark-mode steps:
+All checks pass in both modes. Writing the chart and food-web components.
+Now the main app — the screen state machine.
+Typecheck is clean. Building.
+Builds clean at 120 KB first load, under my 150 KB target. Let me run it and walk the actual learner path. No API keys yet, so this also tests the C1 offline fallback.
+Already on the explorer screen. Continuing the chain from there:
+The full arc lands:
+“With the Rat → Snake arrow the snakes ended at 19. Without it they ended at 0. So Aarav was right after all — but only in a web where the snakes have nothing else to eat. Neither of them was wrong about nature. They were picturing different webs. That one arrow was the whole argument, and you settled it yourself.”
+Checking the settled list and screenshotting the key screens:
+Two near-duplicate settled entries. The first is also dishonest — nothing is “settled” until she runs the experiment. Fixing:
+Two things: the markdown asterisks in what *they* eat render literally. Fixing, then taking clean screenshots:
+The deciding arrow (Rat → Snake) is highlighted in amber on the result web, and the removed Frog is dashed out. Now the required docs and a rebuild.
+Built and verified end to end. The dev server is running at localhost:3000.
+Add your keys
+.env.local is created and gitignored. Fill these two lines:
+sed -i 's|^OPENROUTER_API_KEY=.*|OPENROUTER_API_KEY=sk-or-v1-YOURKEY|; s|^GOOGLE_AI_API_KEY=.*|GOOGLE_AI_API_KEY=AIzaYOURKEY|' .env.local
+On the models — there is no Gemma 26B or 31B. Real sizes are Gemma 2 (2B/9B/27B) and Gemma 3 (1B/4B/12B/27B). I defaulted to google/gemma-3-27b-it:free on OpenRouter and gemma-3-27b-it on AI Studio, both env-configurable, so correcting a wrong guess is a one-line edit. Gemma also supports neither structured output nor function calling, and Gemma 2 has no system role — so I wrote a tolerant JSON extractor with a repair pass and put role instructions in the user turn, rather than using an SDK’s generateObject.
+What works right now, with no keys at all
+I walked the whole learner path in the browser at 375px. The simulator is pure arithmetic in the browser, so the activity runs fully offline and the agents degrade to a labelled recorded conversation — that’s the C1 “clear fallback” requirement satisfied by construction, not bolted on.
+The disagreement arc, verified against real simulator output:
+
+
+	Snake
+	Remove Frog
+	40 → 19 — survives, so Mira was right
+	Then delete Rat → Snake and re-run
+	40 → 0 — extinct, so Aarav was right
+	Dr. Sen’s close: “Neither of them was wrong about nature. They were picturing different webs. That one arrow was the whole argument, and you settled it yourself.”
+The cascade also defeats both misconceptions with numbers: removing the frog moves Grass 100 → 58 and Hawk 20 → 16, both two hops away; removing the snake booms rats to 91 but crashes grasshoppers to 11.
+Bugs I hit and fixed
+* Stale adjudication — the async phase calls closed over session from their render, so the resolution run sent the previous web and Dr. Sen confidently described the wrong experiment. Now routed through a ref.
+* No deciding assumption fired initially: snake “fell” both with and without the arrow, so nothing flipped. Root cause was biological — a predator with zero food was drifting down under crowding instead of starving. Added a starvation rule, which produces the clean survive/extinct split.
+* Re-grading her locked ticks against a web she’d since edited; “no change” printed beside 40 → 36.6; literal *they* asterisks; a note claiming verification failure when the real cause was being offline.
+I also switched the chart’s direction colors off green/amber — partly because the validator flagged it as the protanopia-hard pair, but mainly because green-for-“rose” would teach that a grasshopper boom is good news, which is the exact misconception the app exists to remove.
+Two things to decide
+I did not commit — that’s your call, and the exam checks timestamps. DESIGN.md is written and ready for the 0:30 checkpoint:
+git add -A && git commit -m "Food Web Council: simulator, three-agent pipeline, Two Views disagreement"
+Worth verifying yourself: OpenRouter’s current free-tier limits. I’ve got two providers chained plus the recorded fallback, so a 429 won’t kill the viva — but you should see the live agents working at least once before you rely on them.
+L5 is no the small child its the person who is having difficulty learning the topic
+and choose a single persona dont mix multiple personas like you have taken that 10min limit from the C4 but we are solving C1 in this and then also in Learner also you took mix of both L1 and L5 choose one
+
+and also i want to add Gemma 4 26B and Gemma 4 31B model and a openrouter api keys all three different
+and in the section where you ask question after showing the food chain at start you need to see the diagram for seeing it again
+and i have to add api keys in which .env
+All four changes are in and verified.
+Where the keys go: .env.local
+Already created at /home/rajas/endsems/.env.local, gitignored. Three slots, each with its own key and own model:
+sed -i 's|^SLOT1_API_KEY=.*|SLOT1_API_KEY=sk-or-v1-KEY1|; s|^SLOT2_API_KEY=.*|SLOT2_API_KEY=sk-or-v1-KEY2|; s|^SLOT3_API_KEY=.*|SLOT3_API_KEY=sk-or-v1-KEY3|' .env.local
+Slot 1 (gemma-4-26b-it) serves Mira + Aarav, slot 2 (gemma-4-31b-it) serves Dr. Sen, slot 3 is failover for both. On Vercel the same names go in Project → Settings → Environment Variables.
+Separate keys turn out to matter more than redundancy: free tiers are limited per key, and the two phases fire back to back, so one 429 would otherwise take down a whole round mid-viva. Model IDs are now passed to the provider verbatim and never validated in code — an unrecognised ID returns 404 and the next slot takes over, so nothing breaks while you sort out naming. I’d still check what your OpenRouter account actually serves before the viva, since the recorded-fallback banner is honest but not what you want on screen.
+Persona is now pure L5
+Stripped every L1 detail I’d invented (rural ZP school, parent’s Android, Marathi medium, evening slot, 3G) and every C4/C3 justification. The app’s home screen no longer says “About 10 minutes” — it says you can take as long as you like. DESIGN.md now carries an explicit note that C4 is session length and C3 is one-handed mobile, neither is our card, and nothing is justified by them.
+What’s left is expanded from the L5 seed alone, and it changed the design in one way worth defending in the viva: because she’s repeating the topic, she isn’t a beginner. She already knows producer/consumer/decomposer and can read a single chain. What didn’t survive her first attempt is the web — two arrows into one animal — which is exactly what she was tested on and failed. So the first turn is diagnostic rather than re-teaching from zero.
+The diagram is on the question screens
+You were right that asking her to trace arrows with no arrows visible is a memory test — and a memory test is the one thing this learner shuts down in front of. The web now sits directly above “Tick everyone who changes”, with the removed species crossed out and the line “The frogs are crossed out. Follow the arrows from there.” On the discussion screen it’s a collapsed “Look at the food web again” panel, one tap away without burying the conversation.
+Bug this surfaced
+Removing an apex predator produced “The the otherss will die out completely.” — no deciding assumption exists, so the "the others" fallback got "The " prepended and "s" appended. Fixing it properly meant pulling the contested-species logic into one shared module so the question she’s asked can’t drift from the one the agents argue about, plus real pluralisation:
+Removed
+	Question
+	Frog
+	“What happens to the snakes now that the frogs are gone?”
+	Grass
+	“...now that the grass is gone?” (uncountable)
+	Decomposers
+	nothing contested → task 2 skipped gracefully
+	Build is clean at 120 KB. Still uncommitted — your call:
+git add -A && git commit -m "Pure L5 persona, three-slot model config, diagram on question screens"
+In this make it so that at first it asks the animal it user wants to delete from the food chain but before that make a simple definition of what is food chain and then ask them about which animal to remove then use ai to make a chain like which animal it eats and what animals eat him and then take animals in all the 3-5 stages of the food chain  and also give  a chat for the student to ask his doubt and dont start veryfying things i have to first add the api and then try things
+
+and make a login system with basic username and password
+I have 3 api one from openrouter and then 2 from google ai studio for Gemma 4 31B and Gemma 4 26B
+Understood — 1 OpenRouter + 2 Google AI Studio, and I’ll hold off on testing so you can add keys first.
+This is a substantial restructure, so let me lay out what changes before I write it: the food web stops being a fixed 7-species constant and becomes AI-generated from whatever animal the learner names. That has a real consequence for the simulator — carrying capacities are currently derived once from the fixed web to guarantee equilibrium, so they now have to be computed per-web and carried on the web object.
+Starting with the simulator and web generation.
+Expected errors from the new fields. Now the web generator — the piece that turns a named animal into a simulatable chain:
+Now auth and the chat endpoint:
+Now session state (per-user storage) and the new screens:
+Now the new screens — login, intro, choose, building, and the chat panel:
+Now wiring it all into the main page — the new flow and the tab bar:
+Builds clean. Now the env file for your actual key setup — 1 OpenRouter + 2 Google:
+Done — built and compiling, not tested, as you asked.
+Add your keys in .env.local
+Already created with your exact setup — slots 1 and 2 are Google AI Studio, slot 3 is OpenRouter:
+sed -i 's|^SLOT1_API_KEY=.*|SLOT1_API_KEY=GOOGLE_KEY_FOR_31B|; s|^SLOT2_API_KEY=.*|SLOT2_API_KEY=GOOGLE_KEY_FOR_26B|; s|^SLOT3_API_KEY=.*|SLOT3_API_KEY=sk-or-v1-OPENROUTER_KEY|' .env.local
+Slot 1 is gemma-4-31b-it, slot 2 is gemma-4-26b-it, slot 3 is the OpenRouter fallback. Model IDs go to the provider verbatim and are never validated in code, so whatever your account serves will work; an unrecognised ID returns 404 and the next slot picks it up.
+You must also set APP_USERS before you can sign in — it ships with priya:frogs123,teacher:council99 as a working default, so you can log in immediately and change it later.
+New flow
+Login → what is a food chain (arrows explained, plus producer/consumer/decomposer) → pick an animal (type anything, or tap a suggestion) → AI builds a 3–5 stage web → explorer → remove a species → the existing predict/disagree/simulate arc. A tab bar across the bottom keeps The web / Results / Ask Mira / Settled reachable from anywhere.
+The one design decision worth knowing about
+For the generated web, the model proposes structure only — every number is computed in code. It returns species, who-eats-whom, and trophic level; lib/webgen.ts then derives diet shares (normalised to 1 per predator), predation dependency (capped at 0.7 per prey), baselines, growth rates and carrying capacities.
+I did it this way because asking a small model for coefficients that must satisfy “shares sum to 1” and “dependency stays under 1” gives you a web that drifts while nothing is happening — which destroys the whole premise, since the learner can no longer attribute any change to her own action. Asking it whether a frog eats grasshoppers is a question it answers well.
+There’s also an ensureDecidable() repair step: if the generated web has no predator with two food sources, it adds one. Without that, no two agents can disagree about something a single run settles, and the activity degrades into a plain simulation.
+Two things to be aware of
+The login is a classroom gate, not real auth. Passwords sit in an env var in plain text, no database, no reset, no rate limiting. The password never reaches the browser, the cookie is HMAC-signed, and the comparison is timing-safe — but don’t reuse it for anything that matters. It’s flagged as such in the README.
+I haven’t run any of this. It typechecks and builds clean (123 KB first load), but the generated-web path, the login and the chat have never executed. When you test, the thing most likely to need tuning is the web-generation prompt — if a model returns species with no links or fewer than four species, it falls back to a built-in web rather than erroring, so watch for the offline banner appearing when it shouldn’t.
+Still uncommitted.
+push to github
+Pre-flight checks before pushing — verifying no keys get committed:
+.env/.env.local are properly ignored. One thing I want to change before pushing: .env.example currently ships working default credentials, and that file goes into a public repo. Swapping them for placeholders:
+Clean — no key-shaped strings, and only .env.example is staged. Committing and pushing:
+Pushed to Rajas129/et617-endsem-24b0073 — commit bdfc5a3 on main, 40 files.
+Verified on the remote: only .env.example is there, no .env or .env.local. I scanned every staged file for OpenRouter/Google key patterns before committing and found none.
+One change I made before pushing: .env.example had working default credentials (priya:frogs123). That file goes into a public repo, so anyone reading it would have had the login to your deployed app. I replaced them with CHANGE_ME placeholders. Your local .env.local still has the working ones, so nothing breaks for you — but it does mean Vercel needs real values set, since the deployed app reads APP_USERS from the environment and won’t let anyone sign in without it.
+I pushed to main rather than branching, because Vercel deploys from it and the exam checks repo history there.
+For the Vercel deploy you’ll need these set in Project → Settings → Environment Variables: APP_USERS, AUTH_SECRET, and the three SLOT*_API_KEY values. Worth doing the first deploy early even with the agents falling back — the simulator works without any of the model keys, so you get a live URL banked while you sort the rest out.
+Still untested, as you wanted. The generated-web path is the one I’d exercise first.
+want to deploy it on verrsel i will put the .env.local in the enviroment in vercel do everything else i have connected my github repo to vercel
+Remove the uneccsary process and Make a report for me and keep the persona and constraint we chose and answer the section D properly
+
+in latex
+Stopping the debugging. Let me clean up and write the report.
+No LaTeX locally, so I’ll write it with only standard packages (compiles in Overleaf). First, let me pull the exact verified numbers so the report contains real data, not estimates:
+Verified numbers in hand. Writing the report:
+Balanced. Checking for characters that would break pdflatex:
+& and _ are fine (table separators). Let me confirm the 15 % are all comment lines and not mid-sentence percent signs, which would silently delete text:
+All percentages are escaped and every % is a comment line. The report is clean.
+ET 617 report — D1–D8 in LaTeX, P3-T4 · L5 · C1 · 24B0073
+tex
+REPORT.tex35.4kB
+Report written and pushed: REPORT.tex. I stopped the debugging loop and removed the one-off diagnostic script.
+What’s in it
+All eight deliverables in the required order — Identity card, D1–D8, AI-use log and reflection. Persona and constraint are exactly what we settled on: L5 expanded from that seed alone, and C1 only. D1 carries an explicit constraint-scope note saying C4 (session length) and C3 (one-handed mobile) are not this card’s constraints and justify nothing in the design, so an examiner can’t read borrowed constraints into it.
+Every number is verified simulator output, not an estimate:
+Scenario
+	Result
+	Remove frog
+	grasshopper 60→188.4, snake 40→18.6, grass 100→57.9, hawk 20→15.5
+	…then delete Rat→Snake
+	snake 40→0
+	Remove snake
+	rat 40→91.2 boomed, grasshopper 60→11.1 fell
+	The bold rows carry the teaching — grass and hawk are two hops from the frog and still move (kills misconception 1); the snake removal booms rats and crashes grasshoppers (kills misconception 2).
+D6 contains the actual prompts, and the strongest claim in the report is the one about Dr. Sen: every directional claim is checked against the simulator, and his text is discarded entirely when it contradicts the numbers. D7 answers the P3 design challenge with the three code-enforced invariants.
+Two things you must add
+1. Screenshots. D4 and D5 have marked placeholders, with a commented-out figure block in D4 ready to uncomment — put files in screens/.
+2. AI chat share links. The log section is scaffolded with the five phases; the links are yours to paste.
+Compiling
+No LaTeX on this machine, so I couldn’t compile it — but I verified it mechanically: braces balanced (364/364), all 27 environments matched, zero non-ASCII characters, and every % is a comment line rather than a mid-sentence percent (those are all escaped as \%). Only standard packages, so Overleaf will handle it.
+pdflatex REPORT.tex && pdflatex REPORT.tex
+Twice, so the longtable column widths settle.
+One honest flag: D5 describes both scenarios as designed and as I exercised them, but the agent dialogue I observed came largely through the recorded-fallback path while the free tier was rate-limited. Before you submit, walk both paths once on the live app with the models actually responding, and adjust any quoted agent line that differs — the simulator figures won’t change, since those are deterministic.
