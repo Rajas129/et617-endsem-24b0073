@@ -11,6 +11,8 @@
 | **Deploy** | `et617-<rollno>.vercel.app` · repo `et617-endsem-<rollno>` |
 
 > Note on card: "Food chains: effect of removing a species" is **T4** in the P3 column, not T3. Declare P3-T4.
+>
+> **Status: built.** See `DESIGN.md`, `README.md` and the running app. Figures in §4 are real simulator output, not estimates.
 
 ---
 
@@ -182,53 +184,52 @@ Snake diet shares: **frog 0.6, rat 0.4.**
 
 Learner removes **Frog** and predicts: *"Snakes will die because they eat frogs."*
 
-> **Aarav (Co-learner):** "I agree with you, actually. No frogs means snakes have nothing to eat. I think the snakes crash to almost zero."
+> **Aarav (Co-learner):** "I don't agree. If their food is gone, they've got nothing left. I think the snakes die out completely."
 >
-> **Mira (Guide):** "I don't think they crash. Look at the arrows again — snakes also eat rats. I think snakes dip a little and then hold steady."
+> **Mira (Guide):** "Let's read the arrows again. Look at what the snakes can eat. I don't think they lose everything — I think they drop but hold on."
 
 Conflict detector fires: same proposition (`snake population after frog removal`), opposite
-predictions, simulator-decidable.
+predictions, and `findDecidingAssumption()` confirms one simulator run can settle it.
 
 ### What the learner sees
 
 ```
 ┌────────────────────────────────────────────┐
 │  ⚡ Mira and Aarav disagree                │
+│  What happens to the snakes now that the   │
+│  frogs are gone?                           │
 │                                            │
-│  AARAV says:  snakes crash to near zero    │
-│  MIRA says:   snakes dip, then hold        │
+│  AARAV SAYS:  the snakes die out completely│
+│  MIRA SAYS:   they drop but survive        │
 │                                            │
-│  You decide. What do you think happens?    │
-│  [ Aarav is right ] [ Mira is right ]      │
-│  [ Both are wrong ] [ I'm not sure yet ]   │
+│  They can't both be right. What do you     │
+│  think?                                    │
+│  [ Aarav is right ]  [ Mira is right ]     │
+│  [ They're both wrong ] [ I'm not sure yet]│
 │                                            │
-│  then →  [ Run 10 generations ]            │
+│  then →  [ Run 12 generations ]            │
 └────────────────────────────────────────────┘
 ```
 
-### The resolution
+### The resolution — verified simulator output
 
-Simulator output: snakes fall 40 → 26 by step 4, **recover to 33 by step 10** (the rat edge carries
-them) — then dip again at step 12 as grass crashes under the grasshopper boom and rats decline too.
+Remove Frog: **Grasshopper 60 → 188** (boomed), **Snake 40 → 19**, **Grass 100 → 58**,
+**Hawk 20 → 16**. Grass and Hawk are two hops from the frog and still move.
 
-> **Dr. Sen (Evidence Checker):** "Here are the numbers. Snakes went 40 → 26, then back up to 33.
-> So Aarav was wrong that they crash — but Mira was also not fully right, because they dipped again
-> later. **Both of you missed something.** The real reason snakes survived is one arrow: snake → rat.
-> That arrow is the whole argument.
->
-> So let's settle it properly. **Delete the snake → rat arrow and run it again.**"
+> **Dr. Sen:** "Grasshopper: 60 → 188. Snake: 40 → 19. Grass: 100 → 58. Hawk: 20 → 16. Grass and
+> Hawk changed too, and they are not even next to what we removed. So the snakes did not die out.
+> They dropped to 19 and held on. The reason is one arrow: Rat → Snake. **Delete that arrow and
+> run it again.**"
 
-Learner deletes the edge, re-runs: **snakes crash to 4.**
+The learner deletes the edge and re-runs: **snakes go to 0.**
 
-> **Dr. Sen:** "Now Aarav is right. Neither of them was wrong about ecology — they were assuming
-> different webs. In a web with backup food, removing one prey is survivable. Without it, it isn't."
->
-> **Aarav:** "Oh. So I wasn't wrong, I was just thinking of a simpler chain than the one we had."
->
-> **Mira:** "That's the real lesson, and you found it by running it. Let's write it down."
+> **Dr. Sen:** "With the Rat → Snake arrow the snakes ended at 19. Without it they ended at 0.
+> So Aarav was right after all — but only in a web where the snakes have nothing else to eat.
+> Neither of them was wrong about nature. They were picturing different webs. That one arrow was
+> the whole argument, and you settled it yourself."
 
-**Settled card added:** *"A predator survives losing one prey only if it has another prey. We know
-because we deleted the snake→rat arrow and snakes crashed from 33 to 4."*
+**Settled card:** *"Do the snakes survive losing their main food? Only if they have another food
+source. How we know: we deleted the Rat → Snake arrow and ran it again. The snakes went from 19 to 0."*
 
 **Why this answers the design challenge.** The disagreement is never left hanging, never resolved by
 authority, and never confusing — it is converted into one runnable experiment with a binary
@@ -240,31 +241,41 @@ actual Class 7 learning objective about indirect effects.
 
 ## 5. Learner persona (D2)
 
-**Priya Kamble, 13, Class 7.** Zilla Parishad school, semi-urban Maharashtra; Marathi at home,
-simple English at school. Repeating the Life Processes / ecosystems unit after failing the Class 7
-science exam last term.
+**Seed: L5 — repeating the topic after failing it once; high anxiety, low self-efficacy.**
+Expanded from that seed alone. No L1 detail (rural school, parent's phone, evening slot) and
+no C4 session-length or C3 one-handed framing: our constraint is **C1 only**.
 
-- **Prior knowledge:** can read a single food chain left-to-right and name producer/consumer/decomposer. Cannot handle a *web* (multiple arrows into one animal). Does not connect plants to animal populations.
-- **Misconception 1 — "linear chain":** removing a species only affects the animal **directly above** it. ("Frogs gone → snakes affected. Grass is fine, it's far away.")
-- **Misconception 2 — "predator removal is good for prey":** removing a predator just means more prey, and more is good. (Misses overgrazing → food crash → prey collapse.)
-- **Device / time:** parent's 3-year-old Android, Chrome, 360 px, patchy 3G. ~15 min at a time in the evening.
-- **Motivation:** low. Wants to not fail again. Believes she is "bad at science". Stops immediately if she feels tested.
-- **Affect:** freezes on red marks and on scores. Will not type a free-text answer if she thinks it will be graded.
+**Priya Kamble, 13.** Repeating Class 7 science after failing the ecosystems unit last term.
+
+- **Prior knowledge:** not a beginner. Names producer/consumer/decomposer, reads a single chain
+  left to right. What failed the first time is the *web* — two arrows into one animal.
+- **Misconception 1 — "linear chain":** removing a species affects only the animal **directly
+  above** it. ("Frogs gone → snakes. Grass is far away, grass is fine.")
+- **Misconception 2 — "predator removal is good for prey":** removing a predator just means more
+  prey, and more is good. Misses overgrazing → food crash → prey collapse.
+- **Language:** simple English; under stress she re-reads and stops.
+- **Device:** a phone or shared computer on an unreliable connection.
+- **Time:** unbounded and self-paced. Nothing in the app is timed.
+- **Motivation:** low and defensive. Trying not to fail again, not trying to learn ecology.
+- **Affect:** has already been publicly wrong about this topic. Freezes at scores and red marks,
+  won't type into a box she thinks is graded, reads confident correction as proof she is bad at
+  science.
 
 ### How L5 shaped the design (for D7)
 
 | L5 trait | Design response |
 |---|---|
-| High anxiety | No score, no timer, no streak, no red X. Wrong predictions are called "a guess worth making". |
-| Low self-efficacy | Aarav is wrong ~1 in 3 turns, visibly. She is not the only one who gets things wrong. |
-| Failed before | "What we settled" list grows all session — visible evidence of competence, attributed to her. |
-| Won't type if graded | Every free-text box is labelled "thinking out loud — not marked". |
-| Afraid of being tested | Predictions are *commitments*, not questions. Framed as "what scientists do first". |
-| Repeating the topic | No re-teaching from zero. Diagnostic first turn finds what she already has. |
+| Already failed this topic | Diagnostic first turn; no re-teaching from zero |
+| High anxiety | No score, no timer, no streak, no red X |
+| Low self-efficacy | Aarav is wrong ~1 in 3 turns, visibly — she is not the only one who gets things wrong |
+| Expects to be told she's wrong | Nobody corrects her; the simulation shows her, and she runs it |
+| Won't type if graded | Every free-text box labelled "thinking out loud — not marked" |
+| Protecting against failing twice | "What we settled" grows all session, attributed to her |
+| Reads correction as proof she's bad at science | Resolution is "neither was wrong — they pictured different webs" |
 
-Language level is deliberately held at short declarative sentences, familiar vocabulary, active
-voice and "let's / we" — targeting the **C3 language comprehensibility** and **P5 cognitive
-engagement** rubric rows.
+Language is held at short declarative sentences, familiar vocabulary, active voice and
+"let's / we" — targeting the **C3 language comprehensibility** and **P5 cognitive engagement**
+rubric rows. (That C3 is the *rubric* row on language, not the C3 design-constraint card.)
 
 ---
 
@@ -401,6 +412,6 @@ behaviour — which §6 of the exam paper explicitly permits.
 ## 12. Open items
 
 - Confirm current Gemini free-tier rate limits before relying on 2 calls/turn.
-- Pick the final species set (6–8 nodes keeps the SVG readable at 360 px).
+- Pick the final species set (6–8 nodes keeps the SVG readable and the payload small).
 - Decide whether Aarav's wrongness rate is prompt-controlled or deterministically scheduled (deterministic is easier to demo in the viva).
 - This planning conversation goes in the **AI-use log**.
