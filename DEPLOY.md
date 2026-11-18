@@ -21,6 +21,36 @@ Then confirm the address actually resolves before you submit the Moodle link.
 
 ---
 
+## 1b. Framework preset must be "Next.js"
+
+If the build fails with:
+
+```
+Error: [STATIC_BUILD_NO_OUT_DIR] No Output Directory named "public" found
+```
+
+Vercel is treating this as a **static site**, not a Next.js app — it ran the build and then
+went looking for a `public/` folder to publish. This happens when the project was connected to
+Vercel while the repo still had no `package.json`: Vercel detected "Other" then and does not
+re-detect later.
+
+`vercel.json` in the repo root now declares the framework, and settings there override the
+dashboard:
+
+```json
+{ "framework": "nextjs" }
+```
+
+If it still fails after that, set it by hand: **Settings → Build and Deployment →
+Framework Preset → Next.js**, and make sure **Root Directory** is empty (not `app`, not `src`).
+
+> **Do not "fix" this by creating an empty `public/` directory.** The error goes away because
+> Vercel then has something to publish — a blank static site, with none of the app and none of
+> the API routes. Next.js does not need a `public/` folder; this project deliberately ships no
+> static assets at all (C1).
+
+---
+
 ## 2. Environment variables
 
 Settings → Environment Variables. Tick **Production**, **Preview** and **Development** for each.
