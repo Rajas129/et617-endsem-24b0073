@@ -2,14 +2,15 @@ import type {
   Session, Intake, GuideRecord, CoLearnerRecord, CheckerRecord, Disagreement,
   ClaimVerdict, MisconceptionId, SimResult, FoodWeb,
 } from "./types";
-import { callLLM, extractJSON, clampText, oneOf, LLMUnavailable } from "./llm";
+import { callJSON, clampText, oneOf } from "./llm";
 import { simBrief } from "./simulate";
 import { speciesName, CANONICAL_IDS, pluralLower } from "./web";
 import { contested } from "./proposition";
 
 // Per-agent output caps. Short replies serve two masters at once: bandwidth (C1)
 // and a 13-year-old's reading stamina (L5).
-const MAX = { intakeGuideColearner: 420, checker: 420 };
+// Gemma is verbose even when prefilled; too small a budget truncates it mid-object.
+const MAX = { intakeGuideColearner: 750, checker: 750 };
 const SAY = { mira: 240, aarav: 160, sen: 420 };
 
 // ── Shared prompt fragments ────────────────────────────────────────────────
@@ -77,6 +78,8 @@ export type PredictPhase = {
   bytes: number;
   source: "model" | "fallback";
   provider?: string;
+  failure?: "unreachable" | "unparseable" | "busy";
+  detail?: string;
 };
 
 function predictPrompt(session: Session, utterance: string, stance: CoLearnerRecord["stance"]): string {
@@ -134,26 +137,18 @@ export async function runPredictPhase(session: Session, utterance: string): Prom
   const stance = scheduleStance(session, decidable);
   const prompt = predictPrompt(session, utterance, stance);
 
-  let bytes = 0;
-  let provider: string | undefined;
-  let parsed: {
+  const res = await callJSON<{
     intake?: Partial<Intake>;
     guide?: Partial<GuideRecord>;
     colearner?: Partial<CoLearnerRecord>;
-  } | null = null;
+  }>("predict", prompt, MAX.intakeGuideColearner);
 
-  try {
-    const res = await callLLM("predict", prompt, MAX.intakeGuideColearner);
-    bytes = res.bytes;
-    provider = `${res.slot} · ${res.provider}/${res.model}`;
-    parsed = extractJSON(res.text);
-  } catch (err) {
-    if (!(err instanceof LLMUnavailable)) throw err;
-  }
+  const { bytes, provider } = res;
+  const parsed = res.value;
 
   if (!parsed) {
     const fb = recordedPredict(session, utterance, stance);
-    return { ...fb, bytes, source: "fallback", provider };
+    return { ...fb, bytes, source: "fallback", provider, failure: res.failure, detail: res.detail };
   }
 
   const prop = proposition(session);
@@ -222,6 +217,8 @@ export type AdjudicatePhase = {
   bytes: number;
   source: "model" | "fallback";
   provider?: string;
+  failure?: "unreachable" | "unparseable" | "busy";
+  detail?: string;
 };
 
 function checkerPrompt(session: Session): string {
@@ -268,23 +265,16 @@ JSON shape:
 export async function runAdjudicatePhase(session: Session): Promise<AdjudicatePhase> {
   if (!session.sim) throw new Error("adjudicate called with no simulation");
 
-  let bytes = 0;
-  let provider: string | undefined;
-  let parsed: Partial<CheckerRecord> | null = null;
-
-  try {
-    const res = await callLLM("adjudicate", checkerPrompt(session), MAX.checker);
-    bytes = res.bytes;
-    provider = `${res.slot} · ${res.provider}/${res.model}`;
-    parsed = extractJSON(res.text);
-  } catch (err) {
-    if (!(err instanceof LLMUnavailable)) throw err;
-  }
+  const res = await callJSON<Partial<CheckerRecord>>(
+    "adjudicate", checkerPrompt(session), MAX.checker,
+  );
+  const { bytes, provider } = res;
+  const parsed = res.value;
 
   if (!parsed) {
     return {
-      checker: templatedChecker(session, "The helpers are offline, so here are the numbers on their own."),
-      bytes, source: "fallback", provider,
+      checker: templatedChecker(session, "Here are the numbers on their own."),
+      bytes, source: "fallback", provider, failure: res.failure, detail: res.detail,
     };
   }
 

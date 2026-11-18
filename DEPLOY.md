@@ -119,3 +119,49 @@ over, which is why a wrong id shows up as "offline" rather than a crash.
 model can still exceed `LLM_TIMEOUT_MS` (20s) — that is by design on a low-bandwidth brief:
 fail fast to the fallback rather than leave the learner on a spinner. Raise it if your models
 are consistently slower.
+
+---
+
+## Diagnosing "the helpers are offline"
+
+`node scripts/check-slots.mjs` tests every slot against the real provider using the keys in
+`.env.local` and prints the actual status. It never prints a key. It also lists the Gemma model
+ids your Google key can genuinely serve, which is the fastest way to catch a typo in a model id.
+
+`node scripts/check-json.mjs` goes one step further and shows whether the reply actually parses
+as JSON — the case where the model answers but rambles.
+
+### The three different causes, and what each looks like
+
+| Banner | Cause | What to do |
+|---|---|---|
+| "very busy right now" | every slot returned 429 or 503 | wait a minute; nothing is broken |
+| "got muddled" | a model replied, but not with JSON | the prompt or model needs attention |
+| "can't be reached" | network, bad key, or wrong model id | run `check-slots.mjs` and read the status |
+
+A **404** from `check-slots.mjs` means the model id is wrong. Google ids are bare
+(`gemma-4-31b-it`); OpenRouter ids are namespaced (`google/gemma-4-31b-it:free`). The two are
+not interchangeable.
+
+### Gemma 4 is heavily loaded
+
+At the time of writing both Google AI Studio Gemma 4 endpoints frequently return
+*"This model is currently experiencing high demand"*, and the OpenRouter `:free` route is rate
+limited. The app degrades correctly — the simulator never needs the network and every number
+stays real — but the agents will fall back often.
+
+If you have OpenRouter credit, the single most effective change is to point one slot at the
+**paid** route, which is not subject to the free tier's limits:
+
+```
+SLOT3_MODEL=google/gemma-4-31b-it
+```
+
+(no `:free` suffix). Keeping one paid slot in the chain is the difference between the agents
+working during a viva and showing a recorded conversation.
+
+### Avoid auto-routers
+
+`openrouter/free` is an auto-router and can land on a reasoning model, which returns
+`content: null` with everything in `reasoning` and `finish_reason: "length"` — it reasons until
+it runs out of tokens and never answers. Pin a concrete instruct model instead.

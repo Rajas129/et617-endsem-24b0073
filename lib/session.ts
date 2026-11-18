@@ -39,6 +39,7 @@ export function freshUi() {
     lastSource: null,
     provider: null,
     buildError: null,
+    failure: null,
   };
 }
 
@@ -156,6 +157,7 @@ export function loadSession(username: string | null): Session | null {
     // Older saved sessions predate these fields.
     if (!parsed.ui) parsed.ui = freshUi();
     if (parsed.ui.buildError === undefined) parsed.ui.buildError = null;
+    if (parsed.ui.failure === undefined) parsed.ui.failure = null;
     if (!parsed.chat) parsed.chat = [];
     if (!parsed.web.k) parsed.web.k = undefined;
     return parsed;

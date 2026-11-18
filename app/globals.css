@@ -69,17 +69,35 @@ html, body {
   background: var(--paper);
   color: var(--ink);
   font-family: var(--font);
-  font-size: 17px;
+  font-size: 16px;
   line-height: 1.55;
   -webkit-text-size-adjust: 100%;
 }
 
-/* Narrow-first layout. This is ordinary responsive practice, not a design
-   constraint: C3 (mobile-first, one-handed) is not the card we are solving. */
+/* This is a desktop web app. It is laid out for a browser window first and
+   narrows down gracefully; C3 (mobile-first, one-handed) is not our card. */
 .shell {
-  max-width: 560px;
+  max-width: 1080px;
   margin: 0 auto;
-  padding: 0 var(--gutter) 96px;
+  padding: 0 28px 96px;
+}
+
+/* Two columns on a real screen: the web and the numbers stay visible on the left
+   while the conversation runs down the right, so the learner never has to scroll
+   away from the diagram she is reasoning about. */
+.cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+.col { min-width: 0; }
+.col.sticky { position: sticky; top: 16px; }
+
+@media (max-width: 860px) {
+  .shell { max-width: 620px; padding: 0 var(--gutter) 96px; }
+  .cols { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .col.sticky { position: static; }
 }
 
 h1, h2, h3 { line-height: 1.25; margin: 0 0 8px; }
@@ -98,7 +116,7 @@ p { margin: 0 0 12px; }
   gap: 8px; padding: 14px 0 10px; border-bottom: 1px solid var(--line);
   margin-bottom: 16px;
 }
-.topbar .title { font-weight: 650; font-size: 1rem; }
+.topbar .title { font-weight: 650; font-size: 1.05rem; text-transform: capitalize; }
 .topbar .step { color: var(--ink-faint); font-size: 0.8rem; white-space: nowrap; }
 
 /* ── Cards ── */
@@ -111,17 +129,23 @@ p { margin: 0 0 12px; }
 /* ── Buttons: every action is at least 46 px tall ── */
 button {
   font: inherit; font-weight: 600; cursor: pointer;
-  min-height: var(--tap); padding: 11px 16px;
+  min-height: 40px; padding: 9px 16px;
   border-radius: 10px; border: 1px solid var(--line);
   background: var(--card); color: var(--ink);
   width: 100%; text-align: left;
+  transition: border-color 0.12s ease, background 0.12s ease;
 }
+button:hover:not(:disabled) { border-color: var(--ink-faint); }
+button.primary:hover:not(:disabled) { filter: brightness(1.07); }
 button:disabled { opacity: 0.5; cursor: default; }
 button.primary { background: var(--leaf); border-color: var(--leaf); color: #fff; text-align: center; }
 button.ghost { background: transparent; }
 button.row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 button.inline { width: auto; min-height: 38px; padding: 7px 12px; font-size: 0.9rem; }
 .btn-stack { display: grid; gap: 8px; }
+/* A primary action on a desktop sizes to its label rather than spanning the page. */
+button.primary { width: auto; min-width: 220px; }
+.btn-stack button.primary { width: 100%; }
 .btn-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 
 .chip {
@@ -187,7 +211,7 @@ textarea:focus, input:focus { outline: 2px solid var(--leaf); outline-offset: 1p
 .notmarked { font-size: 0.8rem; color: var(--ink-faint); margin: 6px 0 8px; }
 
 /* ── Food web + chart ── */
-.websvg { width: 100%; height: auto; display: block; }
+.websvg { width: 100%; max-width: 460px; height: auto; display: block; margin: 0 auto; }
 .websvg .node-hit { cursor: pointer; }
 .websvg text { font-family: var(--font); }
 .legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 0.8rem; color: var(--ink-soft); }
@@ -249,7 +273,7 @@ table.outcomes td.num { text-align: right; font-variant-numeric: tabular-nums; }
   font-size: 0.76rem; color: var(--ink-faint);
 }
 .footer .inner {
-  max-width: 560px; margin: 0 auto; padding: 7px var(--gutter);
+  max-width: 1080px; margin: 0 auto; padding: 7px 28px;
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
 }
 .footer a { color: var(--ink-soft); }
@@ -280,17 +304,32 @@ table.outcomes td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .chips button { width: auto; }
 
 /* Persistent tab bar. Sits above the footer so the identity token stays visible. */
-.tabbar {
-  position: fixed; left: 0; right: 0; bottom: 30px;
-  background: var(--card); border-top: 1px solid var(--line);
-}
+/* Desktop: a row of section links under the header, the way a web app does it.
+   It becomes a fixed bottom bar only when the window is genuinely narrow. */
+.tabbar { margin: 0 0 18px; border-bottom: 1px solid var(--line); }
 .tabbar .inner {
-  max-width: 560px; margin: 0 auto; padding: 5px var(--gutter);
-  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px;
+  display: flex; gap: 4px; padding: 0;
 }
 .tabbar button {
-  min-height: 38px; padding: 6px 8px; font-size: 0.84rem; text-align: center;
-  border: 0; background: transparent; color: var(--ink-soft);
+  width: auto; min-height: 36px; padding: 7px 14px; font-size: 0.9rem;
+  border: 0; border-bottom: 2px solid transparent; border-radius: 8px 8px 0 0;
+  background: transparent; color: var(--ink-soft); text-align: center;
 }
-.tabbar button[aria-current="true"] { color: var(--leaf); font-weight: 700; }
-.has-tabbar { padding-bottom: 140px; }
+.tabbar button:hover:not(:disabled) { background: var(--sen-soft); border-color: transparent; }
+.tabbar button[aria-current="true"] {
+  color: var(--leaf); font-weight: 700; border-bottom-color: var(--leaf);
+}
+
+@media (max-width: 860px) {
+  .tabbar {
+    position: fixed; left: 0; right: 0; bottom: 30px; margin: 0;
+    background: var(--card); border-top: 1px solid var(--line); border-bottom: 0;
+    z-index: 5;
+  }
+  .tabbar .inner {
+    max-width: 620px; margin: 0 auto; padding: 5px var(--gutter);
+    display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px;
+  }
+  .tabbar button { border-radius: 8px; border-bottom: 0; font-size: 0.84rem; }
+  .has-tabbar { padding-bottom: 140px; }
+}

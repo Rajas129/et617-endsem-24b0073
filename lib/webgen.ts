@@ -1,5 +1,5 @@
 import type { FoodWeb, Species, Edge, Role } from "./types";
-import { callLLM, extractJSON, clampText, LLMUnavailable } from "./llm";
+import { callJSON, clampText } from "./llm";
 import { computeK } from "./simulate";
 
 /**
@@ -62,18 +62,20 @@ JSON shape:
 }
 
 export async function generateWeb(subject: string): Promise<GenResult> {
-  let bytes = 0;
-  let raw: RawWeb | null = null;
+  const res = await callJSON<RawWeb>("build", prompt(subject), 1400);
+  const bytes = res.bytes;
+  const raw = res.value;
 
-  try {
-    const res = await callLLM("build", prompt(subject), 900);
-    bytes = res.bytes;
-    raw = extractJSON<RawWeb>(res.text);
-  } catch (err) {
-    if (!(err instanceof LLMUnavailable)) throw err;
+  if (!raw) {
+    return {
+      web: fallbackWeb(subject), bytes, source: "fallback",
+      note: res.failure === "unparseable"
+        ? "the model replied but not in a form we could read"
+        : res.failure === "busy"
+          ? "the models are very busy right now — try again in a minute"
+          : "we could not reach the model",
+    };
   }
-
-  if (!raw) return { web: fallbackWeb(subject), bytes, source: "fallback" };
 
   const built = assemble(raw, subject);
   return built

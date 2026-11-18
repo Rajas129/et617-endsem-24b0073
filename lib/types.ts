@@ -208,6 +208,9 @@ export type UiState = {
   provider: string | null;
   /** Error surfaced while the AI was building the chain, if any. */
   buildError: string | null;
+  /** Why we last fell back: the helpers being down and the helpers getting
+      muddled are different things and the learner is told different things. */
+  failure: "unreachable" | "unparseable" | "busy" | null;
 };
 
 export type Screen =

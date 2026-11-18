@@ -1,5 +1,5 @@
 import type { Session, ChatTurn, Intake } from "./types";
-import { callLLM, extractJSON, clampText, oneOf, LLMUnavailable } from "./llm";
+import { callJSON, clampText, oneOf } from "./llm";
 import { speciesName, CANONICAL_IDS, pluralLower } from "./web";
 
 /**
@@ -76,18 +76,11 @@ export async function answerDoubt(session: Session, question: string): Promise<C
     };
   }
 
-  let bytes = 0;
-  let provider: string | undefined;
-  let parsed: { say?: string; proposedEdit?: unknown } | null = null;
-
-  try {
-    const res = await callLLM("chat", buildPrompt(session, question), 300);
-    bytes = res.bytes;
-    provider = `${res.slot} · ${res.provider}/${res.model}`;
-    parsed = extractJSON(res.text);
-  } catch (err) {
-    if (!(err instanceof LLMUnavailable)) throw err;
-  }
+  const res = await callJSON<{ say?: string; proposedEdit?: unknown }>(
+    "chat", buildPrompt(session, question), 550,
+  );
+  const { bytes, provider } = res;
+  const parsed = res.value;
 
   if (!parsed?.say) {
     return { turn: { who: "mira", text: offlineAnswer(session, question) }, bytes, source: "fallback", provider };

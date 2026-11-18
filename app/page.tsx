@@ -109,6 +109,7 @@ export default function Page() {
         guide?: GuideRecord; colearner?: CoLearnerRecord;
         disagreement?: Disagreement | null;
         bytes?: number; source?: "model" | "fallback"; provider?: string;
+        failure?: "unreachable" | "unparseable" | "busy";
       };
 
       update((p) => {
@@ -131,6 +132,7 @@ export default function Page() {
             pendingEdit: data.intake?.proposedEdit ?? null,
             lastSource: data.source ?? "fallback",
             provider: data.provider ?? null,
+            failure: data.failure ?? null,
           },
           screen: "council" as Screen,
         };
@@ -150,7 +152,8 @@ export default function Page() {
         body: JSON.stringify({ phase: "adjudicate", session: current }),
       });
       const data = await res.json() as {
-        checker?: CheckerRecord; bytes?: number; source?: "model" | "fallback"; provider?: string;
+        checker?: CheckerRecord; bytes?: number; source?: "model" | "fallback";
+        provider?: string; failure?: "unreachable" | "unparseable" | "busy";
       };
 
       update((p) => {
@@ -160,7 +163,11 @@ export default function Page() {
           offline: data.source === "fallback",
           openDisagreement: p.openDisagreement
             ? { ...p.openDisagreement, resolved: true } : null,
-          ui: { ...p.ui, checker: data.checker ?? null, provider: data.provider ?? p.ui.provider },
+          ui: {
+            ...p.ui, checker: data.checker ?? null,
+            provider: data.provider ?? p.ui.provider,
+            failure: data.failure ?? null,
+          },
         };
         next = addressThreads(next);
         if (data.checker?.settled) next = addSettled(next, data.checker.settled);
@@ -321,11 +328,31 @@ export default function Page() {
           <span className="step">{STEP_LABEL[s.screen]}</span>
         </header>
 
+        {/* "Offline" is only true when we could not reach the helpers at all. A
+            model that answered but rambled is a different thing, and saying
+            "offline" there would be a lie the learner could catch. */}
         {s.offline && (
           <div className="banner offline">
-            Mira, Aarav and Dr. Sen are offline right now. You are seeing a{" "}
-            <strong>saved example conversation</strong>. Everything else still works —
-            you can keep removing species and running experiments.
+            {s.ui.failure === "busy" ? (
+              <>
+                The helpers are very busy right now and couldn&apos;t answer in time —
+                this usually clears in a minute or two, so it&apos;s worth asking again.
+                Meanwhile you&apos;re seeing a <strong>saved example conversation</strong>,
+                and every experiment still runs normally.
+              </>
+            ) : s.ui.failure === "unparseable" ? (
+              <>
+                The helpers got muddled and sent something we couldn&apos;t read, so
+                you&apos;re seeing a <strong>saved example conversation</strong>. The
+                experiments are unaffected — every number you see is really from your web.
+              </>
+            ) : (
+              <>
+                Mira, Aarav and Dr. Sen can&apos;t be reached right now. You&apos;re seeing
+                a <strong>saved example conversation</strong>. Everything else still works —
+                you can keep removing species and running experiments.
+              </>
+            )}
           </div>
         )}
 
@@ -385,11 +412,12 @@ export default function Page() {
 
         {/* ── EXPLORER ───────────────────────────────────────────────────── */}
         {s.screen === "explorer" && (
-          <>
+          <div className="cols">
+            <div className="col sticky">
             <div className="card">
               <h2>This is our food web</h2>
               <p className="faint" style={{ marginBottom: 10 }}>
-                An arrow points from the food to whoever eats it. Tap any animal.
+                An arrow points from the food to whoever eats it. Click any animal.
               </p>
               <FoodWebSvg
                 web={s.web}
@@ -402,7 +430,9 @@ export default function Page() {
                 </p>
               )}
             </div>
+            </div>
 
+            <div className="col">
             {selected ? (
               <div className="card">
                 <h3>{selected.name}</h3>
@@ -423,9 +453,14 @@ export default function Page() {
                 ) : <span className="chip removed">already removed</span>}
               </div>
             ) : (
-              <div className="card"><p className="muted" style={{ margin: 0 }}>Tap an animal to see what it eats.</p></div>
+              <div className="card">
+                <p className="muted" style={{ margin: 0 }}>
+                  Click any animal in the web to see what it eats and what eats it.
+                </p>
+              </div>
             )}
-          </>
+            </div>
+          </div>
         )}
 
         {/* ── PREDICT ────────────────────────────────────────────────────── */}
@@ -729,7 +764,8 @@ function SimulationScreen({
   useEffect(() => { if (fb && fb.fired === null) onResolveMisconception(); }, [fb, onResolveMisconception]);
 
   return (
-    <>
+    <div className="cols">
+      <div className="col sticky">
       <div className="card">
         <h2>What happened</h2>
         <p className="faint" style={{ marginBottom: 10 }}>
@@ -747,6 +783,13 @@ function SimulationScreen({
         <CascadeChart sim={sim} />
       </div>
 
+      <div className="card">
+        <h3>The numbers</h3>
+        <OutcomesTable sim={sim} />
+      </div>
+      </div>
+
+      <div className="col">
       {fb && (
         <div className="card">
           <h3>Your ticks</h3>
@@ -806,15 +849,11 @@ function SimulationScreen({
         </div>
       )}
 
-      <div className="card">
-        <h3>The numbers</h3>
-        <OutcomesTable sim={sim} />
-      </div>
-
       <div className="nav">
         <button className="inline" onClick={onSettled}>What we settled →</button>
       </div>
-    </>
+      </div>
+    </div>
   );
 }
 

@@ -31,7 +31,7 @@ export default function ChooseSubject({
                onChange={(e) => setText(e.target.value)}
                onKeyDown={(e) => { if (e.key === "Enter" && text.trim()) onChoose(text.trim()); }} />
 
-        <p className="faint" style={{ marginTop: 8 }}>Or tap one of these:</p>
+        <p className="faint" style={{ marginTop: 8 }}>Or pick one of these:</p>
         <div className="chips">
           {SUGGESTIONS.map((s) => (
             <button key={s} className="inline" onClick={() => setText(s)} disabled={busy}>
