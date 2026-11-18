@@ -62,10 +62,14 @@ RULES
   joined to, or that an arrow is wrong — set proposedEdit so we can try it.
   Valid species ids: ${CANONICAL_IDS.concat(web.nodes.map((n) => n.id)).join(", ")}.
 
-JSON shape:
-{"say":"...","proposedEdit":null}
-or
-{"say":"...","proposedEdit":{"op":"add_edge","from":"rat","to":"hawk"}}`;
+Reply in exactly this shape. Worked example — write your own answer:
+
+{"say":"Decomposers break down whatever dies and put the goodness back in the soil, so the plants can grow again.","proposedEdit":null}
+
+If she is proposing a change to the web, set proposedEdit instead of null, like:
+{"say":"Good spot — let's add that arrow and see what changes.","proposedEdit":{"op":"add_edge","from":"rat","to":"hawk"}}
+
+Never write "..." or leave say empty.`;
 }
 
 export async function answerDoubt(session: Session, question: string): Promise<ChatReply> {
@@ -77,7 +81,7 @@ export async function answerDoubt(session: Session, question: string): Promise<C
   }
 
   const res = await callJSON<{ say?: string; proposedEdit?: unknown }>(
-    "chat", buildPrompt(session, question), 550,
+    "chat", buildPrompt(session, question), 480,
   );
   const { bytes, provider } = res;
   const parsed = res.value;

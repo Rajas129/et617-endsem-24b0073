@@ -5,7 +5,7 @@ import { answerDoubt } from "@/lib/chat";
 import type { Session } from "@/lib/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 export async function POST(req: Request) {
   const jar = await cookies();

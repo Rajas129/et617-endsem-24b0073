@@ -9,9 +9,15 @@ import { contested } from "./proposition";
 
 // Per-agent output caps. Short replies serve two masters at once: bandwidth (C1)
 // and a 13-year-old's reading stamina (L5).
-// Gemma is verbose even when prefilled; too small a budget truncates it mid-object.
-const MAX = { intakeGuideColearner: 750, checker: 750 };
-const SAY = { mira: 240, aarav: 160, sen: 420 };
+/**
+ * Sized from what the free routed models actually complete in time rather than
+ * from what the JSON might need. Measured: ~1600 effective tokens finishes
+ * comfortably, ~2300 regularly runs past the timeout. The per-agent character
+ * caps below keep the replies inside this, and short replies were already what
+ * this learner needs.
+ */
+const MAX = { intakeGuideColearner: 520, checker: 560 };
+const SAY = { mira: 200, aarav: 140, sen: 340 };
 
 // ── Shared prompt fragments ────────────────────────────────────────────────
 
@@ -106,9 +112,9 @@ ${prop ? `THE QUESTION ON THE TABLE\n${prop.text}\nBoth Mira and Aarav must give
 
 THE CHARACTERS
 - Mira is a warm guide. She explains and gives confidence. She is the ONLY one who may
-  say what to do next. Max ${SAY.mira} characters.
+  say what to do next. At most 2 short sentences, ${SAY.mira} characters.
 - Aarav is a classmate the same age. He is also unsure of things. ${stanceBrief}
-  Max ${SAY.aarav} characters.
+  At most 1 or 2 short sentences, ${SAY.aarav} characters.
 
 CRITICAL RULES
 - You do NOT know the simulation result. Do not pretend to. Give honest predictions
@@ -126,10 +132,14 @@ Valid species ids for proposedEdit: ${CANONICAL_IDS.join(", ")}.
 Valid misconception ids: "linear-chain" (thinks only the neighbour is affected),
 "predator-removal-is-good" (thinks removing a predator just helps the prey).
 
-JSON shape:
-{"intake":{"kind":"...","claims":["..."],"proposedEdit":null,"misconceptionSignals":[]},
- "guide":{"say":"...","prediction":"...","nextAction":"..."},
- "colearner":{"say":"...","prediction":"...","stance":"${stance}"}}`;
+Reply in exactly this shape. This is a WORKED EXAMPLE from a different web —
+write your own sentences about THIS web, do not copy these words:
+
+{"intake":{"kind":"answer_attempt","claims":["owls will starve"],"proposedEdit":null,"misconceptionSignals":["linear-chain"]},
+ "guide":{"say":"Good thinking. Let's follow every arrow into the owl, not just the one we lost.","prediction":"The owls drop but survive, because they also eat mice.","nextAction":"Make your guess, then we run it."},
+ "colearner":{"say":"I don't agree. If the snakes are gone the owls have nothing left.","prediction":"The owls die out completely.","stance":"${stance}"}}
+
+Never write "..." or leave a field empty. Every field must be a real sentence.`;
 }
 
 export async function runPredictPhase(session: Session, utterance: string): Promise<PredictPhase> {
@@ -251,15 +261,18 @@ YOUR JOB
 - If the result depends on one feeding arrow, name that arrow and tell the learner
   to delete it and run it again. That experiment is how we settle the argument.
 - End with one thing we now know for sure.
-- Max ${SAY.sen} characters. Short sentences.
+- At most 4 short sentences, ${SAY.sen} characters. Be brief.
 
 For each claim, set direction to "up", "down" or "flat" to match the numbers, and
 speciesRef to the species name it is about.
 
-JSON shape:
-{"say":"...","perClaim":[{"claim":"...","status":"supported|contradicted|depends_on_assumption","speciesRef":"Snake","direction":"down","evidence":"snake 40 to 18.6"}],
- "keyAssumption":"...","whoWasRight":"mira|aarav|both_partly|neither|not_applicable",
- "settled":{"question":"...","answer":"...","howWeKnow":"..."}}`;
+Reply in exactly this shape. This is a WORKED EXAMPLE from a different run —
+use the real numbers above, do not copy these:
+
+{"say":"The owls went 20 to 13. They did not die out, because they still had mice. Aarav expected a crash, so that one did not hold up.","perClaim":[{"claim":"owls will starve","status":"contradicted","speciesRef":"Owl","direction":"down","evidence":"owl 20 to 13"}],
+ "keyAssumption":"Mouse to Owl","whoWasRight":"mira","settled":{"question":"Do owls survive losing snakes?","answer":"Yes, because they also eat mice.","howWeKnow":"We ran it and owls ended at 13, not 0."}}
+
+Never write "..." or leave a field empty.`;
 }
 
 export async function runAdjudicatePhase(session: Session): Promise<AdjudicatePhase> {
@@ -460,7 +473,7 @@ export function templatedChecker(session: Session, note: string): CheckerRecord 
 function recordedPredict(session: Session, _utterance: string, stance: CoLearnerRecord["stance"]) {
   const prop = proposition(session);
   const da = session.sim?.decidingAssumption;
-  const pred = da ? pluralLower(da.predatorName) : "the animals above it";
+  const pred = da ? pluralLower(da.predatorName) : "animals higher up";
 
   const guide: GuideRecord = {
     agent: "mira",

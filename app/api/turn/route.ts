@@ -3,7 +3,7 @@ import type { Session } from "@/lib/types";
 import { runPredictPhase, runAdjudicatePhase } from "@/lib/agents";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 type Body =
   | { phase: "predict"; session: Session; utterance: string }

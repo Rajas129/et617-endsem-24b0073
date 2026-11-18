@@ -4,7 +4,7 @@ import { COOKIE, readToken } from "@/lib/auth";
 import { generateWeb } from "@/lib/webgen";
 
 export const runtime = "nodejs";
-export const maxDuration = 45;
+export const maxDuration = 60;
 
 export async function POST(req: Request) {
   const jar = await cookies();

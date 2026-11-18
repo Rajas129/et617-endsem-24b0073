@@ -60,6 +60,29 @@ export function isBusy(attempts: string[]): boolean {
 const TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS ?? 20000);
 
 /**
+ * Total wall-clock budget for one callJSON, kept under the serverless function's
+ * own limit so we always return something rather than being killed mid-chain.
+ */
+const DEFAULT_BUDGET_MS = Number(process.env.LLM_BUDGET_MS ?? 42000);
+
+/** Extra token budget for OpenRouter, where a routed model may reason first. */
+const ROUTER_HEADROOM = Number(process.env.OPENROUTER_HEADROOM ?? 3);
+
+/**
+ * Re-attaches the prefilled opening brace — but only when the model actually
+ * continued from it.
+ *
+ * Providers differ: some honour an assistant prefill and return the remainder of
+ * the object, others ignore it and return a complete object starting with "{".
+ * Prepending blindly turns the second case into "{{…", which never parses. This
+ * is what made the auto-router look broken when it was answering perfectly well.
+ */
+function rejoinPrefill(text: string, prefilled: boolean): string {
+  if (!prefilled) return text;
+  return text.trimStart().startsWith("{") ? text : "{" + text;
+}
+
+/**
  * Model ids are passed through to the provider verbatim and are never validated
  * here, so any id your account can serve will work the moment you set it. An id
  * the provider does not recognise returns 404 and the next slot takes over.
@@ -90,11 +113,11 @@ function orderFor(role: Role): Slot[] {
   return [...first, ...rest];
 }
 
-async function callOpenRouter(slot: Slot, prompt: string, maxTokens: number, prefill: boolean): Promise<LLMResult> {
+async function callOpenRouter(slot: Slot, prompt: string, maxTokens: number, prefill: boolean, budgetMs = TIMEOUT_MS): Promise<LLMResult> {
   const started = Date.now();
   const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
-    signal: AbortSignal.timeout(TIMEOUT_MS),
+    signal: AbortSignal.timeout(Math.max(3000, budgetMs)),
     headers: {
       Authorization: `Bearer ${slot.key}`,
       "Content-Type": "application/json",
@@ -105,8 +128,14 @@ async function callOpenRouter(slot: Slot, prompt: string, maxTokens: number, pre
       messages: prefill
         ? [{ role: "user", content: prompt }, { role: "assistant", content: "{" }]
         : [{ role: "user", content: prompt }],
-      max_tokens: maxTokens,
+      // An auto-router such as "openrouter/free" picks whatever has capacity,
+      // which is the point — but it can land on a reasoning model. Those spend
+      // tokens thinking before they answer, so they need real headroom or they
+      // hit the limit mid-thought and return content: null. Asking for low
+      // reasoning effort is ignored by models that do not reason.
+      max_tokens: Math.round(maxTokens * ROUTER_HEADROOM),
       temperature: prefill ? 0.35 : 0.6,
+      reasoning: { effort: "low" },
     }),
   });
 
@@ -115,25 +144,37 @@ async function callOpenRouter(slot: Slot, prompt: string, maxTokens: number, pre
 
   const json = JSON.parse(raw);
   const choice = json?.choices?.[0];
-  const text = choice?.message?.content ?? "";
+  let text: string = choice?.message?.content ?? "";
+  let fromReasoning = false;
+
   if (!text) {
-    // An auto-router can land on a reasoning model: content comes back null with
-    // everything in `reasoning`, and finish_reason "length" means it never got
-    // round to answering. Pin a concrete instruct model rather than a router.
-    const why = choice?.message?.reasoning
-      ? `reasoned but never answered (finish_reason ${choice?.finish_reason})`
-      : "empty completion";
-    throw new Error(`${slot.id} openrouter: ${why}`);
+    // A routed reasoning model returns content: null and puts everything in
+    // `reasoning`. The answer we want is usually in there, so read it rather
+    // than throwing away a response we were charged for.
+    const reasoning: string = choice?.message?.reasoning ?? "";
+    if (reasoning && reasoning.includes("{")) {
+      text = reasoning;
+      fromReasoning = true;
+    } else {
+      const why = reasoning
+        ? `reasoned but never answered (finish_reason ${choice?.finish_reason})`
+        : "empty completion";
+      throw new Error(`${slot.id} openrouter: ${why}`);
+    }
   }
 
   return {
-    text: prefill ? "{" + text : text, provider: "openrouter", model: slot.model, slot: slot.id,
+    // Reasoning text already contains a whole object, so it is never rejoined.
+    text: fromReasoning ? text : rejoinPrefill(text, prefill),
+    provider: "openrouter",
+    model: (json?.model as string) || slot.model,   // the router says what it picked
+    slot: slot.id,
     bytes: Buffer.byteLength(raw) + Buffer.byteLength(prompt),
     ms: Date.now() - started,
   };
 }
 
-async function callGoogle(slot: Slot, prompt: string, maxTokens: number, prefill: boolean): Promise<LLMResult> {
+async function callGoogle(slot: Slot, prompt: string, maxTokens: number, prefill: boolean, budgetMs = TIMEOUT_MS): Promise<LLMResult> {
   const started = Date.now();
   const url =
     `https://generativelanguage.googleapis.com/v1beta/models/${slot.model}:generateContent` +
@@ -150,7 +191,7 @@ async function callGoogle(slot: Slot, prompt: string, maxTokens: number, prefill
 
   const res = await fetch(url, {
     method: "POST",
-    signal: AbortSignal.timeout(TIMEOUT_MS),
+    signal: AbortSignal.timeout(Math.max(3000, budgetMs)),
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       contents,
@@ -167,7 +208,7 @@ async function callGoogle(slot: Slot, prompt: string, maxTokens: number, prefill
   if (!text) throw new Error(`${slot.id} google: empty completion`);
 
   return {
-    text: prefill ? "{" + text : text, provider: "google", model: slot.model, slot: slot.id,
+    text: rejoinPrefill(text, prefill), provider: "google", model: slot.model, slot: slot.id,
     bytes: Buffer.byteLength(raw) + Buffer.byteLength(prompt),
     ms: Date.now() - started,
   };
@@ -175,16 +216,23 @@ async function callGoogle(slot: Slot, prompt: string, maxTokens: number, prefill
 
 export async function callLLM(
   role: Role, prompt: string, maxTokens: number, prefill = false,
+  deadline = Infinity, callTimeoutMs = TIMEOUT_MS,
 ): Promise<LLMResult> {
   const chain = orderFor(role);
   if (!chain.length) throw new LLMUnavailable(["no slot has both an API key and a model id"]);
 
   const attempts: string[] = [];
   for (const slot of chain) {
+    // Walking a three-slot chain with a per-call timeout can outlast the
+    // serverless function itself, which gets killed mid-request and returns
+    // nothing at all. Stop early and fall back to recorded content instead.
+    const left = deadline - Date.now();
+    if (left < 3000) { attempts.push(`${slot.id}: skipped, out of time`); continue; }
+
     try {
       return slot.provider === "google"
-        ? await callGoogle(slot, prompt, maxTokens, prefill)
-        : await callOpenRouter(slot, prompt, maxTokens, prefill);
+        ? await callGoogle(slot, prompt, maxTokens, prefill, Math.min(left, callTimeoutMs))
+        : await callOpenRouter(slot, prompt, maxTokens, prefill, Math.min(left, callTimeoutMs));
     } catch (err) {
       attempts.push(err instanceof Error ? err.message : String(err));
     }
@@ -209,47 +257,84 @@ export type JSONResult<T> = {
  * caller learns WHY it failed, since "the model rambled" and "the model is down"
  * need different things said to the learner.
  */
+/** How long to wait for a slot before also starting the next one. */
+const HEDGE_MS = Number(process.env.LLM_HEDGE_MS ?? 6000);
+
 export async function callJSON<T>(
   role: Role, prompt: string, maxTokens: number,
+  budgetMs = DEFAULT_BUDGET_MS, callTimeoutMs = TIMEOUT_MS,
 ): Promise<JSONResult<T>> {
-  let bytes = 0;
-  let provider: string | undefined;
-  let detail = "";
-
-  const attempts = [
-    prompt,
-    `${prompt}
-
-IMPORTANT: your entire reply must be one JSON object and nothing else.
-Do not explain. Do not think out loud. Do not use markdown. Start at the opening brace.`,
-  ];
-
-  for (const [i, text] of attempts.entries()) {
-    try {
-      const res = await callLLM(role, text, i === 0 ? maxTokens : Math.round(maxTokens * 1.4), true);
-      bytes += res.bytes;
-      provider = `${res.slot} · ${res.provider}/${res.model}`;
-      const parsed = extractJSON<T>(res.text);
-      if (parsed) return { value: parsed, bytes, provider };
-      detail = `replied ${res.text.length} chars but no JSON in it`;
-    } catch (err) {
-      if (!(err instanceof LLMUnavailable)) throw err;
-      // No point re-prompting when nothing answered: a blunter instruction cannot
-      // fix a 503. Return straight away rather than burning a second full pass.
-      return {
-        value: null, bytes, provider,
-        failure: isBusy(err.attempts) ? "busy" : "unreachable",
-        detail: err.attempts.join(" | ").slice(0, 300),
-      };
-    }
+  const deadline = Date.now() + budgetMs;
+  const chain = orderFor(role);
+  if (!chain.length) {
+    return { value: null, bytes: 0, failure: "unreachable",
+             detail: "no slot has both an API key and a model id" };
   }
 
-  return { value: null, bytes, provider, failure: "unparseable", detail };
-}
+  let bytes = 0;
+  let provider: string | undefined;
+  const failures: string[] = [];
+  let sawReply = false;
 
-/** Exposed for the About screen so the configuration is inspectable at a glance. */
-export function slotSummary() {
-  return slots().map((s) => ({ id: s.id, provider: s.provider, model: s.model }));
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+  /**
+   * Hedged requests rather than strict sequential failover.
+   *
+   * Sequential looks tidy but fails badly here: a slot that HANGS rather than
+   * erroring burns its whole timeout, and with three slots the request runs out
+   * of budget before it ever reaches a healthy one. Measured, that is exactly
+   * what happened — "slot3: skipped, out of time" while slot3 was working fine.
+   *
+   * So each slot starts HEDGE_MS after the one before it, they run concurrently,
+   * and the first reply that actually parses wins. A stalled slot now costs a few
+   * seconds of overlap instead of the entire budget. The preferred slot still
+   * goes first and usually answers before any other is started, so the extra
+   * calls only happen when something is genuinely slow.
+   */
+  async function attempt(text: string, tokens: number): Promise<T | null> {
+    const left = () => deadline - Date.now();
+    const runners = chain.map(async (slot, i) => {
+      if (i > 0) await sleep(Math.min(i * HEDGE_MS, Math.max(left() - 4000, 0)));
+      if (left() < 4000) throw new Error(`${slot.id}: out of time`);
+
+      const res = await callLLM(
+        role, text, tokens, true, deadline, Math.min(callTimeoutMs, left()),
+      );
+      bytes += res.bytes;
+
+      const parsed = extractJSON<T>(res.text);
+      if (!parsed) {
+        sawReply = true;
+        throw new Error(`${res.slot}(${res.model}): ${res.text.length} chars, no JSON`);
+      }
+      provider = `${res.slot} · ${res.provider}/${res.model}`;
+      return parsed;
+    });
+
+    const results = await Promise.allSettled(runners);
+    for (const r of results) {
+      if (r.status === "fulfilled") return r.value;
+      failures.push(r.reason instanceof Error ? r.reason.message : String(r.reason));
+    }
+    return null;
+  }
+
+  const first = await attempt(prompt, maxTokens);
+  if (first) return { value: first, bytes, provider };
+
+  // A blunter instruction can fix rambling; it cannot talk a 503 into answering.
+  if (sawReply && deadline - Date.now() > 12000) {
+    const strict = `${prompt}\n\nIMPORTANT: your entire reply must be one JSON object and nothing else.\nDo not explain. Do not think out loud. Do not use markdown. Start at the opening brace.`;
+    const second = await attempt(strict, Math.round(maxTokens * 1.4));
+    if (second) return { value: second, bytes, provider };
+  }
+
+  return {
+    value: null, bytes, provider,
+    failure: sawReply ? "unparseable" : isBusy(failures) ? "busy" : "unreachable",
+    detail: failures.join(" | ").slice(0, 400),
+  };
 }
 
 // ── Tolerant JSON parsing ──────────────────────────────────────────────────
@@ -293,10 +378,23 @@ function repair(s: string): string {
     .trim();
 }
 
+/**
+ * Values that are the template showing through rather than an answer.
+ *
+ * A model handed a JSON shape with "..." in it will sometimes return the shape
+ * verbatim. That passes a non-empty check and reaches the learner as a speech
+ * bubble containing "...", so it has to be caught explicitly.
+ */
+const PLACEHOLDER = /^(\.{2,}|…+|<[^>]*>|\[[^\]]*\]|string|text|your answer|n\/?a|tbd|xxx+)$/i;
+
+export function isPlaceholder(v: unknown): boolean {
+  return typeof v !== "string" || PLACEHOLDER.test(v.trim());
+}
+
 export function clampText(s: unknown, max: number, fallback = ""): string {
   if (typeof s !== "string") return fallback;
   const t = s.trim().replace(/\s+/g, " ");
-  if (!t) return fallback;
+  if (!t || PLACEHOLDER.test(t)) return fallback;
   return t.length > max ? t.slice(0, max).replace(/\s+\S*$/, "") + "…" : t;
 }
 

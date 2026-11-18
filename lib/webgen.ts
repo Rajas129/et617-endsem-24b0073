@@ -30,14 +30,16 @@ const ABUNDANCE: Record<string, number> = {
 /** Lower trophic levels respond faster. */
 const GROWTH_BY_LEVEL = [0.5, 0.35, 0.26, 0.2, 0.16, 0.14];
 
-export type GenResult = { web: FoodWeb; bytes: number; source: "model" | "fallback"; note?: string };
+export type GenResult = {
+  web: FoodWeb; bytes: number; source: "model" | "fallback"; note?: string; detail?: string;
+};
 
 function prompt(subject: string): string {
   return `Build a simple food web around "${subject}" for a Class 7 science lesson.
 Reply with JSON only. No text outside the JSON.
 
 RULES
-- Between 6 and 8 species in total.
+- Exactly 6 or 7 species in total. Keep it compact.
 - Exactly 3 to 5 trophic stages (level 0 = plant/producer, then up).
 - Include "${subject}" itself, placed at whatever level it really belongs to.
 - Include at least one producer at level 0.
@@ -62,7 +64,11 @@ JSON shape:
 }
 
 export async function generateWeb(subject: string): Promise<GenResult> {
-  const res = await callJSON<RawWeb>("build", prompt(subject), 1400);
+  // Building a web is one longer call, not several short ones: a routed reasoning
+  // model needs room to think before it emits the structure. 800 tokens is ample
+  // for eight species and their links, and a 26s call cap inside a 50s budget
+  // leaves the chain time to fail over without outrunning the function limit.
+  const res = await callJSON<RawWeb>("build", prompt(subject), 650, 50000, 26000);
   const bytes = res.bytes;
   const raw = res.value;
 
@@ -74,6 +80,7 @@ export async function generateWeb(subject: string): Promise<GenResult> {
         : res.failure === "busy"
           ? "the models are very busy right now — try again in a minute"
           : "we could not reach the model",
+      detail: res.detail,
     };
   }
 
