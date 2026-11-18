@@ -1,0 +1,717 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[margin=2.4cm]{geometry}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+
+\definecolor{codebg}{gray}{0.96}
+\definecolor{rule}{gray}{0.80}
+
+\lstset{
+  basicstyle=\ttfamily\scriptsize,
+  backgroundcolor=\color{codebg},
+  breaklines=true,
+  breakatwhitespace=false,
+  columns=fullflexible,
+  frame=single,
+  rulecolor=\color{rule},
+  xleftmargin=0pt,
+  framexleftmargin=4pt,
+  framexrightmargin=4pt,
+  aboveskip=8pt,
+  belowskip=8pt,
+  literate={->}{{$\rightarrow$}}2
+}
+
+\newcommand{\id}{24B0073}
+\setlength{\parskip}{5pt}
+\setlength{\parindent}{0pt}
+
+\title{\textbf{Food Web Council}\\[4pt]
+\large A multi-agent learning environment for food-chain disruption}
+\author{Roll number \id{} \quad\textbar\quad ET 617 End-Semester Examination}
+\date{}
+
+\begin{document}
+\maketitle
+
+%====================================================================
+\section*{Identity card}
+\addcontentsline{toc}{section}{Identity card}
+
+\begin{tabular}{@{}p{3.6cm}p{12cm}@{}}
+\toprule
+\textbf{Field} & \textbf{Value}\\
+\midrule
+P --- Problem      & \textbf{P3} Multi-agent collaborative learning environment\\
+T --- Topic        & \textbf{P3-T4} Food chains: effect of removing a species (Cl.\ 7)\\
+L --- Learner      & \textbf{L5} Learner repeating the topic after failing it once; high anxiety, low self-efficacy\\
+C --- Constraint   & \textbf{C1} Low bandwidth\\
+ID                 & \textbf{\id}\\
+\midrule
+Live application   & \url{https://et617-24b0073.vercel.app}\\
+Repository         & \url{https://github.com/Rajas129/et617-endsem-24b0073}\\
+\bottomrule
+\end{tabular}
+
+\vspace{6pt}
+\textit{Note on the topic code.} In the P3 column of Section 4.1, ``Food chains: effect of
+removing a species'' is \textbf{T4}; T3 in that column is series versus parallel circuits.
+The card is therefore declared as P3-T4.
+
+%====================================================================
+\section{D1 \quad Educational problem}
+
+Class 7 learners can read a single food chain from left to right, but they treat it as a
+\emph{line} rather than a \emph{web}. Asked what happens when one species is removed, they
+predict an effect only on the animal immediately adjacent to it, and they assume that removing
+a predator is straightforwardly good for its prey. Both ideas survive ordinary teaching because
+a textbook diagram is static: there is no way to pull a species out and watch what happens three
+arrows away. A learner who has already failed this unit once carries a second problem on top of
+the first --- she has learned to expect being told she is wrong, so any design that feels like a
+test stops her before the content does.
+
+\subsection*{Learning outcomes}
+
+\begin{enumerate}[leftmargin=*,itemsep=2pt]
+  \item \textbf{Predict} the effect of removing one species on at least two species that are
+        \emph{not} adjacent to it in the web.
+  \item \textbf{Explain} why a predator may survive the loss of one prey species, with reference
+        to its alternate feeding links.
+  \item \textbf{Compare} two conflicting predictions and \textbf{identify} the assumption that
+        separates them.
+\end{enumerate}
+
+All three are observable in the application's own logs: outcome 1 from the species she ticks,
+outcome 2 from her free-text explanation, outcome 3 from whether she edits the deciding arrow.
+
+\subsection*{Context of use}
+
+On her own, away from the classroom in which she failed, in a web browser on a laptop or
+shared computer over an unreliable connection. She may repeat the activity as often as she
+likes before the re-test.
+
+\textbf{Constraint scope.} The card's constraint is \textbf{C1 (low bandwidth)}. Session length
+is C4 and one-handed mobile layout is C3; neither is this card's constraint, and nothing in this
+design is justified by them. The application has no timer and makes no claim about how long a
+sitting should be.
+
+%====================================================================
+\section{D2 \quad Learner persona}
+
+\textbf{Seed: L5} --- a learner repeating the topic after failing it once; high anxiety, low
+self-efficacy. The persona below is expanded from that seed alone.
+
+\textbf{Priya Kamble, 13.} Repeating Class 7 science after failing the ecosystems unit last term.
+
+\begin{longtable}{@{}p{3.3cm}p{12.3cm}@{}}
+\toprule
+\textbf{Attribute} & \textbf{Detail}\\
+\midrule
+\endhead
+Prior knowledge &
+Not a beginner, and this matters. She has already been taught food chains once. She names
+producer, consumer and decomposer correctly and reads a single chain left to right. What did not
+survive the first attempt is the \emph{web} --- two arrows arriving at one animal --- which is
+precisely what she was tested on and failed.\\
+\addlinespace
+Misconception 1 &
+\textbf{Linear chain.} Removing a species affects only the animal directly above it.
+\textit{``Frogs gone, so snakes. Grass is far away, grass is fine.''}\\
+\addlinespace
+Misconception 2 &
+\textbf{Predator removal is good.} Removing a predator simply means more prey, and more is good.
+Misses the overgrazing crash that follows the boom.\\
+\addlinespace
+Language &
+Simple English. Under stress she re-reads the same sentence and stops, so every sentence she is
+shown is short and plainly worded.\\
+\addlinespace
+Device &
+A web browser on a laptop or shared computer, on a connection she cannot rely on.\\
+\addlinespace
+Time &
+Unbounded and self-paced. Nothing in the application is timed or capped.\\
+\addlinespace
+Motivation &
+Low and defensive. She is not trying to learn ecology; she is trying not to fail again. The
+activity has to be worth doing before it is worth finishing.\\
+\addlinespace
+Affect &
+The defining trait. She has already been publicly wrong about this topic. She freezes at scores
+and red marks, will not type into a box she believes is graded, and reads a confident correction
+as evidence that she is bad at science. Being wrong a \emph{second} time is what she is
+protecting herself against, so the design must make being wrong survivable before it can make it
+useful.\\
+\bottomrule
+\end{longtable}
+
+%====================================================================
+\section{D3 \quad Educational content}
+
+\subsection*{The concept explanation}
+
+The learner first meets three short ideas, before any activity: that a food chain shows who eats
+whom; that the arrow points \emph{from the food to whoever eats it}; and that real life is not a
+single line, because most animals eat more than one thing. The third idea is the one the whole
+activity turns on and it is stated plainly up front: ``that makes a \emph{web}, not a chain ---
+and it is why taking one animal out can change something far away from it.''
+
+She then names any animal she likes and a food web is built around it. The worked example below
+uses the canonical web, whose figures are the verified output of the simulator.
+
+\subsection*{The web}
+
+Seven species. The snake eats frogs (0.55 of its diet) \emph{and rats} (0.45). That one split is
+the pedagogical centre of the activity: it is what allows two agents to disagree honestly.
+
+\begin{center}
+\begin{tabular}{@{}llr@{}}
+\toprule
+\textbf{Species} & \textbf{Role} & \textbf{Baseline}\\
+\midrule
+Grass & producer & 100\\
+Grasshopper & consumer (eats grass) & 60\\
+Rat & consumer (eats grass) & 40\\
+Frog & consumer (eats grasshopper) & 50\\
+Snake & consumer (eats frog 0.55, rat 0.45) & 40\\
+Hawk & consumer (eats snake 0.70, rat 0.30) & 20\\
+Decomposers & decomposer & 30\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{Verified results}
+
+These are simulator output, not estimates. With nothing removed, every species holds exactly at
+its baseline for all 12 generations, so any change the learner sees is attributable to something
+she did.
+
+\begin{center}
+\begin{tabular}{@{}lrrll@{}}
+\toprule
+\textbf{Species} & \textbf{Start} & \textbf{End} & \textbf{Direction} & \textbf{Hops from frog}\\
+\midrule
+\multicolumn{5}{@{}l}{\textit{Remove the frog}}\\
+Grasshopper & 60 & 188.4 & boomed & 1\\
+Snake & 40 & 18.6 & fell & 1\\
+\textbf{Grass} & \textbf{100} & \textbf{57.9} & \textbf{fell} & \textbf{2}\\
+\textbf{Hawk} & \textbf{20} & \textbf{15.5} & \textbf{fell} & \textbf{2}\\
+Rat & 40 & 36.6 & steady & 2\\
+\midrule
+\multicolumn{5}{@{}l}{\textit{Remove the frog, with the Rat $\rightarrow$ Snake arrow deleted}}\\
+Snake & 40 & \textbf{0} & \textbf{died out} & 1\\
+\midrule
+\multicolumn{5}{@{}l}{\textit{Remove the snake} (targets misconception 2)}\\
+Rat & 40 & 91.2 & boomed & 1\\
+Frog & 50 & 70.3 & rose & 1\\
+\textbf{Grasshopper} & \textbf{60} & \textbf{11.1} & \textbf{fell} & \textbf{2}\\
+Hawk & 20 & 12.9 & fell & 1\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The bold rows are the teaching. Grass and hawk are two hops from the frog and still move, which
+contradicts misconception 1. Removing the snake booms the rats \emph{and crashes the
+grasshoppers}, which contradicts misconception 2 using the learner's own experiment rather than
+a correction.
+
+\subsection*{Five tasks in four formats}
+
+\begin{longtable}{@{}p{0.5cm}p{2.9cm}p{8.4cm}p{3.4cm}@{}}
+\toprule
+\textbf{\#} & \textbf{Format} & \textbf{Task} & \textbf{Targets}\\
+\midrule
+\endhead
+1 & Multi-select & ``Tick everyone who changes.'' Correct: Grasshopper, Snake, \emph{Grass},
+    \emph{Hawk} & Misconception 1\\
+2 & Prediction commit & ``Do the snakes die out, drop but survive, hold steady, or rise?''
+    Committed \emph{before} anything runs & Outcome 1\\
+3 & Free text & ``The snakes survived. Why?'' Evaluated against the simulation & Outcome 2\\
+4 & Model edit & ``Delete one arrow so that the snakes \emph{do} die out.'' & Outcome 3\\
+5 & Adjudication & ``Mira and Aarav disagree. Who is right, and what would settle it?'' & Outcome 3\\
+\bottomrule
+\end{longtable}
+
+\subsection*{Model answers}
+
+\begin{description}[leftmargin=1.2cm,style=nextline,itemsep=2pt]
+  \item[Task 1] Grasshopper, Snake, Grass and Hawk. Rat and Decomposers barely move.
+  \item[Task 2] ``They will drop but survive.'' Snakes fall from 40 to 18.6 and hold.
+  \item[Task 3] ``Because snakes eat rats as well as frogs, so they still had food.''
+  \item[Task 4] Delete \texttt{Rat $\rightarrow$ Snake}. Snakes then fall from 40 to 0.
+  \item[Task 5] ``Neither is right on its own --- it depends whether the snake has another food.
+        Deleting that arrow and running it again would settle it.''
+\end{description}
+
+\subsection*{Feedback (written in code, so it cannot drift between runs)}
+
+\textbf{For a correct response to task 1:}
+\begin{quote}\itshape
+``You got Grass and Hawk too. That's the hard one --- most people stop at the animal right next
+to them. They changed because the whole web is joined up.''
+\end{quote}
+
+\textbf{When misconception 1 fires} (she ticks only the snake):
+\begin{quote}\itshape
+``Snake is right --- good. But let's keep going down the arrows. If the frogs are gone, who stops
+being eaten? And then what happens to what they eat? Look at Grass and Hawk.''
+\end{quote}
+She is shown the cascade and never told the answer. The far-away change is then stated plainly:
+\textit{``Grass and Hawk are not even touching the frog in the web, and they still changed.''}
+
+\textbf{When misconception 2 fires} (she expects a predator's removal to simply help its prey):
+\begin{quote}\itshape
+``Grasshopper did boom --- up to 196 around step 8. But look at Grass: 100 $\rightarrow$ 58. More
+grasshoppers was not simply good news. Why do you think Grass dropped?''
+\end{quote}
+The overshoot is the teacher. In the snake-removal run the same mechanism is starker: rats boom
+to 91.2 while grasshoppers crash to 11.1.
+
+%====================================================================
+\section{D4 \quad Working application}
+
+\textbf{URL:} \url{https://et617-24b0073.vercel.app} \qquad
+\textbf{Identity token \id{}} appears in the footer of every screen and on the About screen.
+
+\subsection*{Screen map (eleven connected states)}
+
+\begin{longtable}{@{}p{0.5cm}p{2.6cm}p{5.2cm}p{6.6cm}@{}}
+\toprule
+\textbf{\#} & \textbf{Screen} & \textbf{Learner input} & \textbf{System output / transition}\\
+\midrule
+\endhead
+1 & Sign in & username, password & session cookie; progress stored per user\\
+2 & What is a food chain? & reads, continues & definition, arrow convention, worked 3-node example\\
+3 & Pick an animal & types any animal & $\rightarrow$ building\\
+4 & Building & waits & AI proposes structure; code computes all coefficients\\
+5 & The web & clicks a species & what it eats / what eats it; ``take them out'' $\rightarrow$ predict\\
+6 & Predict & multi-select, then a committed prediction + free text & $\rightarrow$ council\\
+7 & Council & reads two agents & if they conflict, a Two Views card appears\\
+8 & Two Views & chooses a side (or ``both wrong'') & $\rightarrow$ run the simulation\\
+9 & Results & reads, explains in own words & cascade, sparklines, table, Dr.\ Sen's verdict\\
+10 & Ask Mira & types any doubt & answer; may propose a web edit to try\\
+11 & What we settled & reviews & accumulated findings, each with ``How we know''\\
+\bottomrule
+\end{longtable}
+
+\subsection*{C1 (low bandwidth) --- how it is visibly satisfied}
+
+\begin{longtable}{@{}p{5.2cm}p{10.4cm}@{}}
+\toprule
+\textbf{Requirement} & \textbf{Implementation}\\
+\midrule
+\endhead
+Core activity works on a slow connection &
+The population simulator is ordinary arithmetic running in the browser. Building the web,
+removing a species, committing a prediction and running 12 generations all work with
+\emph{no network at all}. The AI is commentary on top, never load-bearing.\\
+\addlinespace
+No media over 1\,MB &
+Zero images, zero audio, zero video, zero web fonts. The food web and every chart are inline
+SVG; the system font stack is used throughout. Measured first load: \textbf{120\,kB}.\\
+\addlinespace
+A clear fallback when an AI call fails &
+A labelled banner plus a recorded conversation, while the simulator stays live. Three distinct
+causes are distinguished rather than collapsed into ``offline'' (see D6).\\
+\addlinespace
+Visible to the examiner &
+The footer carries a live byte counter (``41 KB used'') that ticks once per model round-trip,
+beside the identity token.\\
+\bottomrule
+\end{longtable}
+
+Further C1-driven decisions: at most two model calls per round rather than four; per-agent token
+caps that also keep the reading level low; and the session persisted to the browser so a dropped
+connection never loses her work.
+
+\subsection*{Screenshots}
+
+\textit{Insert captured screenshots of the live application here.}
+
+% \begin{figure}[h]\centering
+%   \includegraphics[width=0.48\textwidth]{screens/web.png}
+%   \includegraphics[width=0.48\textwidth]{screens/twoviews.png}
+%   \caption{The generated web, and the Two Views disagreement card.}
+% \end{figure}
+
+%====================================================================
+\section{D5 \quad Two contrasting learner scenarios}
+
+Both scenarios were run on the application. They differ at the first task and the system
+responds differently from that point onward.
+
+\subsection*{Scenario A --- the learner who responds correctly}
+
+She ticks Grasshopper, Snake, Grass and Hawk, and predicts that the snakes will drop but survive.
+
+\begin{enumerate}[leftmargin=*,itemsep=1pt]
+  \item \textbf{Task 1 feedback.} ``You got Grass and Hawk too. That's the hard one --- most
+        people stop at the animal right next to them.''
+  \item \textbf{Council.} Aarav still disagrees with Mira (his stance is scheduled, not a
+        reaction to her being right), so the Two Views card still appears. She now has to defend
+        a position she already holds, which is a different cognitive task from forming one.
+  \item \textbf{Simulation.} Snakes 40 $\rightarrow$ 18.6. Her prediction is confirmed.
+  \item \textbf{Dr.\ Sen.} Confirms, then names the arrow the result depends on and invites the
+        deciding experiment. \emph{Being right does not end the activity} --- she is still sent
+        to test the assumption.
+  \item \textbf{Settled.} ``A predator survives losing one prey only if it has another.''
+\end{enumerate}
+
+\subsection*{Scenario B --- the learner who shows misconception 1}
+
+She ticks \emph{only} the snake --- the frog's immediate neighbour --- and predicts the snakes
+will die out completely.
+
+\begin{enumerate}[leftmargin=*,itemsep=1pt]
+  \item \textbf{Task 1 feedback diverges immediately.} ``Snake is right --- good. But let's keep
+        going down the arrows \ldots Look at Grass and Hawk.'' She is given something to watch,
+        not a correction.
+  \item \textbf{Council.} She chooses ``Aarav is right'', siding with her own misconception.
+  \item \textbf{Simulation.} Snakes 40 $\rightarrow$ 18.6: her prediction does not hold. The
+        indirect note fires --- \textit{``Grass and Hawk are not even touching the frog in the
+        web, and they still changed.''} --- which Scenario A never sees, because she had already
+        ticked them.
+  \item \textbf{Dr.\ Sen.} ``So the snakes did not die out. They dropped to 19 and held on. The
+        reason is one arrow: Rat $\rightarrow$ Snake. Delete that arrow and run it again.''
+  \item \textbf{The resolution.} She deletes the arrow. Snakes fall to \textbf{0}.
+        \begin{quote}\itshape
+        ``With the Rat $\rightarrow$ Snake arrow the snakes ended at 19. Without it they ended at
+        0. So Aarav was right after all --- but only in a web where the snakes have nothing else
+        to eat. Neither of them was wrong about nature. They were picturing different webs. That
+        one arrow was the whole argument, and you settled it yourself.''
+        \end{quote}
+  \item \textbf{Misconception state.} Her linear-chain confidence rises on the mis-tick and falls
+        again once she identifies the deciding arrow, which raises the scaffolding level in
+        between.
+\end{enumerate}
+
+\textbf{How the system responds differently:} different task-1 feedback; an indirect-effects note
+that only the misconception path receives; a different ``who was right'' verdict; and an extra
+required experiment before anything is recorded as settled.
+
+\textit{Insert screenshots of both paths here.}
+
+%====================================================================
+\section{D6 \quad AI functionality specification}
+
+Four AI features. For each: what it does, what it receives, what it emits, how the output is
+checked before the learner sees it, and what happens when it fails.
+
+\subsection*{Where the AI is --- and where it deliberately is not}
+
+The population simulation contains \textbf{no AI}. It is arithmetic in the browser and it is the
+ground truth against which AI claims are checked. This is the single most important design
+decision in the system: it is what makes verification possible at all.
+
+\subsection*{Feature 1 --- Building the food web}
+
+\textbf{Does:} turns an animal the learner names into a 3--5 stage food web.
+
+\textbf{Receives:} the animal's name, inside this prompt (abridged):
+
+\begin{lstlisting}
+Build a simple food web around "<animal>" for a Class 7 science lesson.
+Reply with JSON only. No text outside the JSON.
+RULES
+- Exactly 6 or 7 species in total.
+- Exactly 3 to 5 trophic stages (level 0 = plant/producer, then up).
+- Include "<animal>" itself, at whatever level it really belongs to.
+- Include at least one producer at level 0. Include one decomposer.
+- IMPORTANT: at least one animal must eat TWO different things. This matters:
+  it is what lets a learner test whether a predator survives losing one food.
+- Use common English names a 13-year-old knows. No scientific names.
+FIELDS
+- level: 0 for producers, 1 for plant-eaters, 2, 3, 4 going up.
+- abundance: "very common" | "common" | "uncommon" | "rare".
+- uncountable: true for mass nouns like grass, false for countable animals.
+- links: "eaten" is the food, "eatenBy" is the one doing the eating.
+\end{lstlisting}
+
+\textbf{Emits:} structure only --- species, trophic levels, and who eats whom.
+
+\textbf{How it is checked.} The model is never asked for a number that the simulation depends on.
+Diet shares are normalised in code to sum to 1 per predator; predation dependency is capped at
+0.7 in total per prey so carrying capacity stays positive; baselines come from the abundance
+tier and growth rates from trophic level; carrying capacities are then derived so that the
+untouched web sits \emph{exactly} at equilibrium. Unknown species ids, self-loops and arrows into
+producers are discarded; a consumer left with no food is attached to a plausible species one
+level down. Finally \texttt{ensureDecidable()} guarantees at least one predator with two food
+sources --- without one, no two agents can disagree about anything a single run can settle.
+
+\textit{Why this split:} asking a small model for coefficients that must satisfy ``shares sum to
+1'' and ``dependency below 1'' produces a web that drifts while nothing is happening, which
+destroys the premise that every change is attributable to the learner. Asking it whether a frog
+eats grasshoppers is a question it answers well.
+
+\textbf{Fallback:} a built-in seven-species web, with the reason shown.
+
+\subsection*{Feature 2 --- Mira (guide) and Aarav (co-learner)}
+
+\textbf{Does:} produces one scaffolding turn and one challenge turn, and classifies what the
+learner typed.
+
+\textbf{Receives:} the current web, the learner model, her utterance, and the single proposition
+both must address --- computed in code so the two predictions are always comparable.
+\textbf{It does not receive the simulation result.}
+
+\begin{lstlisting}
+- Mira is a warm guide. She explains and gives confidence. She is the ONLY one
+  who may say what to do next. At most 2 short sentences.
+- Aarav is a classmate the same age. He is also unsure of things.
+  Aarav must DISAGREE with Mira about this exact question. He should argue the
+  simple food-chain view: the predator has lost its food, so it will die out.
+  He may well be wrong -- that is fine and expected.
+CRITICAL RULES
+- You do NOT know the simulation result. Do not pretend to.
+- Never mention populations as exact numbers. You have not run anything yet.
+- Never tell the learner she is wrong. Never use the words test, marks, score.
+- Mira and Aarav must address the SAME question.
+\end{lstlisting}
+
+\textbf{How it is checked.} Every field is length-clamped and enumerations are constrained to
+known values. Template placeholders (``\ldots'', ``\texttt{<text>}'') are rejected as empty, since
+a model handed a JSON shape will sometimes return the shape verbatim. Aarav's stance is
+\emph{overwritten in code} after the call: it is scheduled deterministically, never left to the
+model, so a disagreement can be demonstrated on demand and his wrongness rate stays a
+pedagogical parameter rather than a lottery. Because these two agents cannot see the simulator,
+there is nothing to fact-check --- their honesty is structural.
+
+\textbf{Fallback:} a recorded exchange that still poses the real disagreement.
+
+\subsection*{Feature 3 --- Dr.\ Sen (evidence checker)}
+
+\textbf{Does:} reports what the numbers show, says who was right, and names the assumption the
+result depends on. The only agent that sees the simulation.
+
+\textbf{Receives:} a compact JSON brief of the simulator output, both agents' stated predictions,
+and the learner's choice.
+
+\textbf{Emits:} prose plus a per-claim verdict carrying, for each claim, the species it is about
+and a direction (up / down / flat).
+
+\textbf{How it is checked --- the strictest check in the system.} Every directional claim is
+compared against the simulator: a claim that a species went up when it fell, or that names a
+species not in the web, \emph{fails}. The prose is then scanned for numbers, and figures that
+correspond to nothing the simulator produced count against it. On failure the model's text is
+\textbf{discarded entirely} and replaced by a summary generated directly from the simulation, so
+a confident falsehood never reaches the learner. The replacement says which of the two situations
+occurred, because ``the helpers are offline'' and ``the helper's reply did not match the result''
+are different facts.
+
+\subsection*{Feature 4 --- the doubt chat}
+
+\textbf{Does:} answers free-form questions. Deliberately outside the council pipeline: a learner
+who simply wants to know what a decomposer does should not have to commit a prediction and watch
+two agents argue to find out.
+
+\textbf{How it is checked.} Mira is again blind to the simulation, so she cannot spoil an
+experiment the learner has not run. She is instructed never to state an outcome as fact, and any
+web edit she proposes is \emph{confirmed by the learner} before it is applied --- a doubt becomes
+an experiment rather than a correction. Proposed edits naming unknown species are dropped.
+
+\textbf{Fallback:} an answer assembled from the web itself (what the named species eats and what
+eats it), so it is still true and still about her actual question.
+
+\subsection*{Failure handling across all four features}
+
+\begin{center}
+\begin{tabular}{@{}llp{7.4cm}@{}}
+\toprule
+\textbf{Cause} & \textbf{Learner sees} & \textbf{Rationale}\\
+\midrule
+All slots 429/503 & ``very busy right now'' & Telling her the helpers are gone when they are
+merely loaded sends her away for the wrong reason.\\
+Replied, but no JSON & ``got muddled'' & Not an outage; the experiments are unaffected and she
+is told so.\\
+Unreachable & ``can't be reached'' & The genuine offline case.\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Three model slots are configured, each with its own model; a slot that returns an unusable reply
+fails over exactly as a 503 does, because otherwise one chatty model masks every working slot
+behind it. In all cases the simulator keeps running, so the activity never stops.
+
+%====================================================================
+\section{D7 \quad Pedagogical rationale}
+
+\subsection*{How the design supports learning}
+
+The activity is built on \emph{commitment before evidence}. The learner ticks who she thinks
+changes and commits a prediction before anything runs. This is what converts the simulation from
+an animation into a test of her own model: a result is only informative if she had a prior.
+
+Scaffolding is adaptive along three channels, as required for a dynamically adaptive product:
+her \emph{responses} (misconception confidence moves on each answer), her \emph{requests for
+help}, and her \emph{interaction} (self-initiated web edits lower the support level). These feed
+a scaffold level that changes how much Mira explains.
+
+Feedback never corrects. When a misconception fires, she is given something to watch and the
+simulation shows her. The cascade narrative is generated in code from the simulator output, so
+what she reads can never drift from what the numbers did.
+
+\subsection*{Answer to the P3 design challenge}
+
+\textit{How will the system prevent conflicting agent advice from confusing learners while
+keeping learner agency?}
+
+Three invariants, enforced in code:
+
+\begin{enumerate}[leftmargin=*,itemsep=2pt]
+  \item \textbf{At most one open disagreement at a time.} While one is unresolved, Aarav's stance
+        is forced to ``probe''. Confusion comes from \emph{stacked} unresolved conflicts, not
+        from one.
+  \item \textbf{Agents may disagree about predictions. They may never disagree about
+        instructions.} Only Mira may set the next action. The learner is never told two different
+        things to do.
+  \item \textbf{Every disagreement must be decidable by one simulator run.} If the conflict
+        detector cannot map it to a runnable experiment, it is suppressed and downgraded to a
+        question. There are no unresolvable arguments.
+\end{enumerate}
+
+Agency is preserved because the learner is the tiebreaker: she commits a choice \emph{before}
+seeing the result, ``they're both wrong'' and ``I'm not sure yet'' are first-class options, and
+the resolution is an experiment \emph{she} runs, not a verdict an agent hands down. Every
+settled finding is recorded with a ``How we know'' line attributed to her action.
+
+\subsection*{The moment where two agents disagree, and how she experiences it}
+
+Aarav says the snakes die out; Mira says they drop but survive. These are both defensible, and
+the truth depends on one arrow. The learner sees a single \textbf{Two Views} card --- not two
+competing walls of chat --- showing both claims side by side and asking her to decide. The
+simulation then gives 18.6: Mira was right. Dr.\ Sen names the arrow and sends her to delete it.
+She does; the snakes hit 0; Aarav was right after all.
+
+The design pay-off is the final line: \emph{neither agent was wrong about nature --- they were
+picturing different webs}. For a learner whose central fear is being wrong a second time, this
+reframes error as having assumed something different, not as being stupid. That is the reason the
+disagreement exists at all.
+
+\subsection*{How the learner context shaped the design}
+
+\begin{longtable}{@{}p{5.6cm}p{10.0cm}@{}}
+\toprule
+\textbf{L5 trait} & \textbf{Design response}\\
+\midrule
+\endhead
+Has already failed this topic & No re-teaching from zero; the first turn is diagnostic and starts
+from what survived.\\
+High anxiety & No score, no timer, no streak, no red cross. A wrong prediction is called ``a guess
+worth making''.\\
+Low self-efficacy & Aarav is a \emph{peer}, not a third adult, and is visibly wrong about a third
+of the time. She watches someone like her be wrong without consequence before risking it
+herself.\\
+Expects to be told she is wrong & Nobody corrects her. The simulation shows her, and she runs
+it.\\
+Will not type if graded & Every free-text box is labelled ``not marked''.\\
+Protecting against failing twice & ``What we settled'' accumulates all session and is attributed
+to her.\\
+Reads correction as proof she is bad at science & The disagreement resolves to ``neither was
+wrong --- they pictured different webs''.\\
+\bottomrule
+\end{longtable}
+
+\subsection*{How C1 shaped the design}
+
+C1 did not merely constrain the interface; it changed the architecture. Because the activity has
+to work on a poor connection, the simulation had to be local and deterministic --- and once it
+is local and deterministic, it becomes available as \emph{ground truth to check the AI against}.
+The constraint produced the verification layer. Two further consequences: the agents' replies are
+short because the token budget is small, which also suits a 13-year-old who re-reads when
+stressed; and the fallbacks had to be genuinely good, because on this learner's connection they
+will be seen.
+
+%====================================================================
+\section{D8 \quad Evaluation plan}
+
+\subsection*{Assessment of each outcome}
+
+\begin{longtable}{@{}p{0.4cm}p{3.6cm}p{5.4cm}p{5.2cm}@{}}
+\toprule
+\textbf{\#} & \textbf{Outcome} & \textbf{Assessment item} & \textbf{Success threshold}\\
+\midrule
+\endhead
+1 & Predict non-adjacent effects & Task 1 multi-select, repeated post-activity on a
+    \emph{different} web & $\geq$60\% of learners name at least one non-adjacent species, from a
+    $\leq$20\% pre-activity baseline\\
+2 & Explain predator survival & Task 3 free text, three-level rubric & $\geq$50\% reach level 3\\
+3 & Identify the deciding assumption & Task 4: edit an arrow to flip the outcome &
+    $\geq$40\% flip it within three edits\\
+\bottomrule
+\end{longtable}
+
+\textbf{Rubric for outcome 2.} Level 1: no reference to feeding links. Level 2: names the
+alternate prey. Level 3: explains that survival \emph{depends on} the alternate link existing.
+
+\subsection*{Log data collected}
+
+Pre/post ticks with hop distance from the removed species; committed predictions versus outcomes;
+free-text explanations with rubric score; Two Views choice distribution (specifically, how often
+learners simply side with the adult rather than the peer --- a design risk worth measuring);
+number and timing of self-initiated web edits; length of the settled list at exit; abandonment
+point; and, for this persona particularly, the \textbf{free-text submission rate}, which tests
+whether the ``not marked'' framing actually works.
+
+\subsection*{What would count as success}
+
+Beyond the thresholds above, three behavioural signals: a learner edits the web without being
+told to; the settled list is non-empty at exit; and the Two Views choices are not overwhelmingly
+``Mira is right'', which would indicate deference to authority rather than reasoning. A measured
+gain on outcome 1 with a near-zero free-text rate would count as a partial failure --- it would
+mean the content worked but the affective design did not.
+
+%====================================================================
+\section*{AI-use log and reflection}
+\addcontentsline{toc}{section}{AI-use log and reflection}
+
+\subsection*{Log}
+
+\textit{Insert the share links or exports of every AI chat used, in the order used.}
+
+\begin{enumerate}[leftmargin=*,itemsep=1pt]
+  \item Topic and card selection; comparison of P3-T4 against P1-T3 on available free tooling.
+  \item Product specification (\texttt{PRD.md}): agent roles, collaboration protocol, conflict
+        invariants.
+  \item Implementation: simulator, agent pipeline, web generation, authentication, interface.
+  \item Debugging the model layer; diagnosis of the fallback behaviour.
+  \item This report.
+\end{enumerate}
+
+\subsection*{Reflection}
+
+AI was used throughout, and the most useful thing I learned was \emph{where not to use it}.
+
+The first version asked the model for the simulation coefficients. The result looked plausible
+and was pedagogically useless: the web drifted while nothing was happening, so a learner could
+not attribute any change to her own action. Moving every number into code and leaving the model
+only the structure --- which species, who eats whom --- fixed it. The same division of labour
+runs through the whole system: the model proposes, the code disposes.
+
+The second lesson was that an agent's \emph{ignorance} can be a design asset. Mira and Aarav are
+deliberately not shown the simulation result, which is what makes their disagreement honest
+rather than theatre, and which means there is nothing to fact-check. Only Dr.\ Sen sees the
+numbers, and he is therefore the only one who needs verification --- which is implemented, and
+which discards his text outright when it contradicts the simulator.
+
+The third lesson came from a bug. The application kept reporting that the agents were offline
+when they were not: one model was replying with paragraphs of thinking-aloud instead of JSON, and
+my code treated ``answered unusably'' as success, so a working provider behind it was never
+tried. Two things were wrong --- the failover logic, and the message, which told the learner
+something untrue. Both were fixed, and the lesson generalises: when an AI feature degrades, the
+system must be specific about \emph{how}, because the honest message and the convenient message
+are rarely the same.
+
+What I would not delegate again is the feedback text for the misconceptions. The generated
+versions were fluent and subtly corrective in tone --- exactly wrong for a learner who stops when
+she feels judged. Those strings are written by hand, in code, and they do not change between runs.
+
+\end{document}
